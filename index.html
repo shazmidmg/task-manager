@@ -183,6 +183,81 @@
         .p-none   { background: #e5e7eb; }
         .progress-bar { background: #f0f0f0; height: 3px; border-radius: 2px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+        /* Sidebar tabs */
+        .sidebar-tabs { display: flex; border-bottom: 1px solid #e8e8e8; background: white; }
+        .sidebar-tab {
+            flex: 1; padding: 8px 4px; font-size: 11px; font-weight: 600;
+            text-align: center; cursor: pointer; border: none; background: none;
+            color: #bbb; border-bottom: 2px solid transparent;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .sidebar-tab.active { color: #667eea; border-bottom-color: #667eea; }
+
+        /* Inline editable fields */
+        .task-select {
+            font-size: 9px; font-weight: 700; padding: 2px 4px;
+            border-radius: 4px; border: none; cursor: pointer;
+            font-family: inherit; appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23999' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 3px center;
+            padding-right: 14px; text-transform: uppercase; letter-spacing: 0.2px;
+        }
+        .task-select:focus { outline: 1px solid #667eea; }
+        .sel-done        { background: #d1fae5; color: #065f46; }
+        .sel-in-progress { background: #dbeafe; color: #1e40af; }
+        .sel-blocked     { background: #fee2e2; color: #991b1b; }
+        .sel-to-do       { background: #f3f4f6; color: #6b7280; }
+        .sel-high        { background: #fef2f2; color: #991b1b; }
+        .sel-medium      { background: #fffbeb; color: #92400e; }
+        .sel-low         { background: #f0fdf4; color: #166534; }
+
+        .task-date {
+            font-size: 10px; color: #888; border: none; background: none;
+            font-family: inherit; cursor: pointer; padding: 0; width: 90px;
+        }
+        .task-date:focus { outline: 1px solid #667eea; border-radius: 3px; }
+        .task-date::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; width: 10px; }
+
+        .task-edit-row {
+            display: flex; gap: 5px; align-items: center;
+            margin-top: 5px; flex-wrap: wrap;
+        }
+
+        /* Archive panel */
+        .archive-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+        .archive-panel.active { display: flex; }
+        .archive-filters {
+            padding: 8px 10px; background: white; border-bottom: 1px solid #e8e8e8;
+            display: flex; gap: 6px; flex-wrap: wrap;
+        }
+        .filter-chip {
+            font-size: 10px; padding: 3px 8px; border-radius: 20px;
+            border: 1px solid #ddd; background: white; cursor: pointer;
+            color: #666; font-family: inherit; transition: all 0.15s;
+        }
+        .filter-chip.active { background: #667eea; color: white; border-color: #667eea; }
+        .archive-scroll { flex: 1; overflow-y: auto; padding: 8px 10px; }
+        .archive-card {
+            background: #f9f9f9; padding: 8px 10px; margin-bottom: 5px;
+            border-radius: 7px; border: 1px solid #ebebeb; font-size: 11px;
+            opacity: 0.85;
+        }
+        .archive-name { font-weight: 600; color: #555; margin-bottom: 3px; text-decoration: line-through; }
+        .archive-meta { font-size: 10px; color: #bbb; display: flex; gap: 8px; }
+        .archive-empty { font-size: 12px; color: #ccc; text-align: center; padding: 30px 10px; }
+        .btn-archive-done {
+            margin: 8px 10px 0; padding: 7px; background: #f0fdf4;
+            border: 1px solid #86efac; border-radius: 7px;
+            font-size: 11px; font-weight: 600; color: #166534;
+            cursor: pointer; text-align: center; transition: all 0.15s;
+        }
+        .btn-archive-done:hover { background: #dcfce7; }
+        .restore-btn {
+            font-size: 9px; padding: 2px 6px; background: white;
+            border: 1px solid #ddd; border-radius: 4px; cursor: pointer;
+            color: #667eea; font-family: inherit; margin-left: auto; flex-shrink: 0;
+        }
         /* Mobile drawer */
         .hamburger {
             display: none;
@@ -323,25 +398,50 @@ Every change syncs to your Google Sheet automatically.</div>
             </div>
         </div>
         <div class="stats-row" id="statsRow"></div>
-        <div class="tasks-scroll" id="tasksSidebar"><p style="font-size:12px;color:#ccc;text-align:center;padding:20px;">No tasks yet</p></div>
+        <div class="sidebar-tabs">
+            <button class="sidebar-tab active" id="tabActive" onclick="switchSidebar('active')">Active</button>
+            <button class="sidebar-tab" id="tabArchive" onclick="switchSidebar('archive')">Archive <span id="archiveCount" style="font-size:9px;"></span></button>
+        </div>
+
+        <!-- ACTIVE TASKS -->
+        <div id="activePanel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            <button class="btn-archive-done" onclick="archiveDoneTasks()">Archive all Done tasks →</button>
+            <div class="tasks-scroll" id="tasksSidebar"><p style="font-size:12px;color:#ccc;text-align:center;padding:20px;">No tasks yet</p></div>
+        </div>
+
+        <!-- ARCHIVE PANEL -->
+        <div class="archive-panel" id="archivePanel">
+            <div class="archive-filters" id="archiveFilters">
+                <button class="filter-chip active" data-filter="All" onclick="setArchiveFilter('All', this)">All</button>
+                <button class="filter-chip" data-filter="Client Projects" onclick="setArchiveFilter('Client Projects', this)">Clients</button>
+                <button class="filter-chip" data-filter="Dopermint Projects" onclick="setArchiveFilter('Dopermint Projects', this)">Dopermint</button>
+                <button class="filter-chip" data-filter="Talents" onclick="setArchiveFilter('Talents', this)">Talents</button>
+                <button class="filter-chip" data-filter="Personal Projects" onclick="setArchiveFilter('Personal Projects', this)">Personal</button>
+            </div>
+            <div class="archive-scroll" id="archiveList"></div>
+        </div>
     </div>
 </div>
 
 <script>
+const TODAY = '2026-03-16';
 const CATEGORIES = ['Personal Projects','Client Projects','Talents','Dopermint Projects'];
 const STATUSES   = ['To Do','In Progress','Done','Blocked'];
+const PRIORITIES  = ['High','Medium','Low'];
 
 let state = {
     tasks: JSON.parse(localStorage.getItem('shaz_tasks') || 'null') || [
-        {id:1,name:'Dr. Mani healthcare proposal',    category:'Client Projects',    status:'Done',        priority:'High',   dueDate:'',notes:'',percent:100},
-        {id:2,name:'Golden Choice respond.io config', category:'Client Projects',    status:'In Progress', priority:'High',   dueDate:'',notes:'',percent:80 },
-        {id:3,name:'HR talent recruitment',           category:'Talents',            status:'Blocked',     priority:'Medium', dueDate:'',notes:'',percent:20 },
-        {id:4,name:'Dopermint DMG.AI documentation',  category:'Dopermint Projects', status:'Done',        priority:'Medium', dueDate:'',notes:'',percent:100},
-        {id:5,name:'Trading bot framework setup',     category:'Dopermint Projects', status:'In Progress', priority:'High',   dueDate:'',notes:'',percent:30 },
-        {id:6,name:'Lavish Dine landing page',        category:'Client Projects',    status:'Done',        priority:'Low',    dueDate:'',notes:'',percent:100}
+        {id:1,name:'Dr. Mani healthcare proposal',    category:'Client Projects',    status:'Done',        priority:'High',   dueDate:'',addedDate:TODAY,notes:'',percent:100},
+        {id:2,name:'Golden Choice respond.io config', category:'Client Projects',    status:'In Progress', priority:'High',   dueDate:'',addedDate:TODAY,notes:'',percent:80 },
+        {id:3,name:'HR talent recruitment',           category:'Talents',            status:'Blocked',     priority:'Medium', dueDate:'',addedDate:TODAY,notes:'',percent:20 },
+        {id:4,name:'Dopermint DMG.AI documentation',  category:'Dopermint Projects', status:'Done',        priority:'Medium', dueDate:'',addedDate:TODAY,notes:'',percent:100},
+        {id:5,name:'Trading bot framework setup',     category:'Dopermint Projects', status:'In Progress', priority:'High',   dueDate:'',addedDate:TODAY,notes:'',percent:30 },
+        {id:6,name:'Lavish Dine landing page',        category:'Client Projects',    status:'Done',        priority:'Low',    dueDate:'',addedDate:TODAY,notes:'',percent:100}
     ],
+    archive: JSON.parse(localStorage.getItem('shaz_archive') || '[]'),
     nextId: parseInt(localStorage.getItem('shaz_nextId')||'7'),
-    history: []
+    history: [],
+    archiveFilter: 'All'
 };
 
 let cfg = {
@@ -596,13 +696,14 @@ async function sendMessage() {
             } else if (a.type === 'create') {
                 state.tasks.push({
                     id: state.nextId++,
-                    name:     a.name     || 'New Task',
-                    category: CATEGORIES.includes(a.category) ? a.category : 'Personal Projects',
-                    status:   STATUSES.includes(a.status)     ? a.status   : 'To Do',
-                    priority: a.priority || 'Medium',
-                    dueDate:  a.dueDate  || '',
-                    notes:    a.notes    || '',
-                    percent:  a.percent  || 0
+                    name:      a.name      || 'New Task',
+                    category:  CATEGORIES.includes(a.category) ? a.category : 'Personal Projects',
+                    status:    STATUSES.includes(a.status)      ? a.status   : 'To Do',
+                    priority:  a.priority  || 'Medium',
+                    dueDate:   a.dueDate   || '',
+                    addedDate: TODAY,
+                    notes:     a.notes     || '',
+                    percent:   a.percent   || 0
                 });
                 changed = true;
             } else if (a.type === 'delete') {
@@ -650,15 +751,28 @@ function esc(t) {
 }
 
 function saveTasks() {
-    localStorage.setItem('shaz_tasks',  JSON.stringify(state.tasks));
-    localStorage.setItem('shaz_nextId', state.nextId.toString());
+    localStorage.setItem('shaz_tasks',   JSON.stringify(state.tasks));
+    localStorage.setItem('shaz_archive', JSON.stringify(state.archive));
+    localStorage.setItem('shaz_nextId',  state.nextId.toString());
+}
+
+function statusClass(s) {
+    return { 'Done':'sel-done','In Progress':'sel-in-progress','Blocked':'sel-blocked','To Do':'sel-to-do' }[s]||'sel-to-do';
+}
+function priorityClass(p) {
+    return { 'High':'sel-high','Medium':'sel-medium','Low':'sel-low' }[p]||'sel-medium';
 }
 
 function renderUI() {
     const sidebar = document.getElementById('tasksSidebar');
     const statsEl = document.getElementById('statsRow');
     const countEl = document.getElementById('taskCount');
+    const archCnt = document.getElementById('archiveCount');
+
+    const active = state.tasks.filter(t => t.status !== 'Done' || true); // show all active tasks
     countEl.textContent = state.tasks.length + ' task' + (state.tasks.length!==1?'s':'');
+    archCnt.textContent = state.archive.length ? `(${state.archive.length})` : '';
+
     const done=state.tasks.filter(t=>t.status==='Done').length;
     const prog=state.tasks.filter(t=>t.status==='In Progress').length;
     const blk =state.tasks.filter(t=>t.status==='Blocked').length;
@@ -668,35 +782,149 @@ function renderUI() {
         <div class="stat prog">   <span class="n">${prog}</span><span class="l">Active</span></div>
         <div class="stat blocked"><span class="n">${blk}</span> <span class="l">Blocked</span></div>
         <div class="stat todo">   <span class="n">${todo}</span><span class="l">To Do</span></div>`;
+
     const bycat = {};
     CATEGORIES.forEach(c=>bycat[c]=[]);
     state.tasks.forEach(t=>{ const c=CATEGORIES.includes(t.category)?t.category:'Personal Projects'; bycat[c].push(t); });
+
     sidebar.innerHTML='';
     for (const cat of CATEGORIES) {
         const tasks=bycat[cat]; if(!tasks.length) continue;
         const lbl=document.createElement('div'); lbl.className='cat-label'; lbl.textContent=cat;
         sidebar.appendChild(lbl);
-        tasks.forEach(task=>{
-            const sk=(task.status||'').toLowerCase().replace(/ /g,'-');
-            const pk=(task.priority||'').toLowerCase();
-            const fill={done:'#10b981','in-progress':'#3b82f6',blocked:'#ef4444','to-do':'#d1d5db'}[sk]||'#d1d5db';
-            const el=document.createElement('div'); el.className='task-card';
-            el.innerHTML=`
+        tasks.forEach(task => {
+            const sk  = (task.status||'To Do').toLowerCase().replace(/ /g,'-');
+            const fill= {done:'#10b981','in-progress':'#3b82f6',blocked:'#ef4444','to-do':'#d1d5db'}[sk]||'#d1d5db';
+            const el  = document.createElement('div');
+            el.className = 'task-card';
+
+            // Status options
+            const statusOpts = STATUSES.map(s =>
+                `<option value="${s}" ${task.status===s?'selected':''}>${s}</option>`
+            ).join('');
+            // Priority options
+            const prioOpts = PRIORITIES.map(p =>
+                `<option value="${p}" ${task.priority===p?'selected':''}>${p}</option>`
+            ).join('');
+
+            el.innerHTML = `
                 <div class="task-row1">
                     <div class="task-name${task.status==='Done'?' done':''}" title="${esc(task.name)}">${esc(task.name)}</div>
-                    <span class="sbadge s-${sk}">${task.status}</span>
                 </div>
-                <div class="task-row2">
-                    <span class="task-meta">${task.dueDate?'Due: '+task.dueDate:''}</span>
-                    <div style="display:flex;align-items:center;gap:4px;">
-                        <div class="priority-dot p-${pk==='high'?'high':pk==='medium'?'medium':pk==='low'?'low':'none'}"></div>
-                        <span class="task-meta">${task.percent}%</span>
-                    </div>
+                <div class="task-edit-row">
+                    <select class="task-select ${statusClass(task.status)}" onchange="updateTaskField(${task.id},'status',this.value,this)">${statusOpts}</select>
+                    <select class="task-select ${priorityClass(task.priority)}" onchange="updateTaskField(${task.id},'priority',this.value,this)">${prioOpts}</select>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${task.percent}%;background:${fill}"></div></div>`;
+                <div class="task-edit-row" style="margin-top:4px;">
+                    <span style="font-size:9px;color:#bbb;flex-shrink:0;">Due</span>
+                    <input type="date" class="task-date" value="${task.dueDate||''}" onchange="updateTaskField(${task.id},'dueDate',this.value,this)" title="Due date">
+                    <span style="font-size:9px;color:#bbb;flex-shrink:0;margin-left:4px;">Added</span>
+                    <input type="date" class="task-date" value="${task.addedDate||TODAY}" onchange="updateTaskField(${task.id},'addedDate',this.value,this)" title="Added date">
+                </div>
+                <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:${task.percent}%;background:${fill}"></div></div>
+                <div style="font-size:9px;color:#bbb;margin-top:3px;">${task.percent}% complete</div>`;
             sidebar.appendChild(el);
         });
     }
+
+    renderArchive();
+}
+
+function updateTaskField(id, field, value, el) {
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) return;
+    task[field] = value;
+    // Update select colour class
+    if (field === 'status') {
+        el.className = `task-select ${statusClass(value)}`;
+    } else if (field === 'priority') {
+        el.className = `task-select ${priorityClass(value)}`;
+    }
+    saveTasks();
+    if (cfg.sheetUrl) pushToSheet();
+    // Re-render only stats without full rebuild to avoid losing focus
+    const done=state.tasks.filter(t=>t.status==='Done').length;
+    const prog=state.tasks.filter(t=>t.status==='In Progress').length;
+    const blk =state.tasks.filter(t=>t.status==='Blocked').length;
+    const todo=state.tasks.filter(t=>t.status==='To Do').length;
+    document.getElementById('statsRow').innerHTML=`
+        <div class="stat done">   <span class="n">${done}</span><span class="l">Done</span></div>
+        <div class="stat prog">   <span class="n">${prog}</span><span class="l">Active</span></div>
+        <div class="stat blocked"><span class="n">${blk}</span> <span class="l">Blocked</span></div>
+        <div class="stat todo">   <span class="n">${todo}</span><span class="l">To Do</span></div>`;
+}
+
+/* ═══════════════════════════
+   ARCHIVE
+═══════════════════════════ */
+function switchSidebar(tab) {
+    const isActive = tab === 'active';
+    document.getElementById('tabActive').classList.toggle('active', isActive);
+    document.getElementById('tabArchive').classList.toggle('active', !isActive);
+    document.getElementById('activePanel').style.display  = isActive ? 'flex' : 'none';
+    document.getElementById('archivePanel').classList.toggle('active', !isActive);
+    if (!isActive) renderArchive();
+}
+
+function archiveDoneTasks() {
+    const done = state.tasks.filter(t => t.status === 'Done');
+    if (!done.length) { alert('No Done tasks to archive.'); return; }
+    if (!confirm(`Archive ${done.length} Done task${done.length>1?'s':''}? They'll move to the Archive tab.`)) return;
+    done.forEach(t => {
+        state.archive.unshift({ ...t, archivedDate: TODAY });
+    });
+    state.tasks = state.tasks.filter(t => t.status !== 'Done');
+    saveTasks(); renderUI();
+    if (cfg.sheetUrl) pushToSheet();
+}
+
+function setArchiveFilter(filter, btn) {
+    state.archiveFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderArchive();
+}
+
+function restoreTask(idx) {
+    const task = state.archive[idx];
+    if (!task) return;
+    task.status = 'To Do';
+    task.percent = 0;
+    delete task.archivedDate;
+    state.tasks.push(task);
+    state.archive.splice(idx, 1);
+    saveTasks(); renderUI();
+    switchSidebar('active');
+    if (cfg.sheetUrl) pushToSheet();
+}
+
+function renderArchive() {
+    const list = document.getElementById('archiveList');
+    if (!list) return;
+    document.getElementById('archiveCount').textContent = state.archive.length ? `(${state.archive.length})` : '';
+    const filtered = state.archiveFilter === 'All'
+        ? state.archive
+        : state.archive.filter(t => t.category === state.archiveFilter);
+
+    if (!filtered.length) {
+        list.innerHTML = `<p class="archive-empty">${state.archive.length ? 'No tasks in this category' : 'Nothing archived yet.\nDone tasks you archive will appear here.'}</p>`;
+        return;
+    }
+    list.innerHTML = '';
+    filtered.forEach((task, i) => {
+        const realIdx = state.archive.indexOf(task);
+        const el = document.createElement('div');
+        el.className = 'archive-card';
+        el.innerHTML = `
+            <div class="archive-name">${esc(task.name)}</div>
+            <div class="archive-meta">
+                <span>${task.category.split(' ')[0]}</span>
+                <span>${task.priority||'Medium'}</span>
+                ${task.archivedDate ? `<span>Archived ${task.archivedDate}</span>` : ''}
+                <button class="restore-btn" onclick="restoreTask(${realIdx})">Restore</button>
+            </div>`;
+        list.appendChild(el);
+    });
 }
 
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
