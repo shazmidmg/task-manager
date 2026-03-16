@@ -183,6 +183,59 @@
         .p-none   { background: #e5e7eb; }
         .progress-bar { background: #f0f0f0; height: 3px; border-radius: 2px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+        /* Mode tabs */
+        .mode-tabs {
+            display: flex; border-bottom: 1px solid #ebebeb;
+            background: white;
+        }
+        .mode-tab {
+            flex: 1; padding: 10px; font-size: 12px; font-weight: 600;
+            text-align: center; cursor: pointer; border: none; background: none;
+            color: #aaa; border-bottom: 2px solid transparent;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .mode-tab.active { color: #667eea; border-bottom-color: #667eea; }
+
+        /* Dump panel */
+        .dump-panel {
+            display: none; flex-direction: column; flex: 1;
+            padding: 16px; gap: 10px; background: #fafafa;
+        }
+        .dump-panel.active { display: flex; }
+        .dump-label {
+            font-size: 11px; font-weight: 700; color: #888;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .dump-textarea {
+            flex: 1; min-height: 180px; padding: 12px 14px;
+            border: 1.5px solid #ddd; border-radius: 8px;
+            font-size: 13.5px; font-family: inherit; line-height: 1.6;
+            resize: none; transition: border-color 0.2s;
+            background: white; color: #1a1a2e;
+        }
+        .dump-textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        .dump-actions { display: flex; gap: 8px; }
+        .dump-voice {
+            padding: 10px 13px; border: 1.5px solid #ddd; border-radius: 8px;
+            background: white; cursor: pointer; font-size: 15px;
+        }
+        .dump-voice.active { background: #ef4444; border-color: #ef4444; }
+        .dump-clear {
+            padding: 10px 14px; border: 1.5px solid #ddd; border-radius: 8px;
+            background: white; cursor: pointer; font-size: 12px; color: #888;
+            font-family: inherit; font-weight: 500;
+        }
+        .dump-submit {
+            flex: 1; padding: 10px; background: #667eea; color: white;
+            border: none; border-radius: 8px; font-size: 13.5px;
+            font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+        .dump-submit:hover { background: #5568d3; }
+        .dump-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .dump-examples {
+            font-size: 11px; color: #bbb; line-height: 1.6;
+        }
+
         /* Mobile drawer */
         .hamburger {
             display: none;
@@ -287,13 +340,33 @@ Every change syncs to your Google Sheet automatically.</div>
             </div>
         </div>
 
-        <div class="input-area">
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tabChat" onclick="switchMode('chat')">💬 Chat</button>
+            <button class="mode-tab" id="tabDump" onclick="switchMode('dump')">📋 Meeting Dump</button>
+        </div>
+
+        <div class="input-area" id="chatPanel">
             <div class="input-row">
                 <input type="text" id="inputField" class="input-field" placeholder="Talk to me naturally..." autocomplete="off">
                 <button class="btn-icon" id="voiceBtn" onclick="startVoice()">🎤</button>
                 <button class="btn-send" id="sendBtn" onclick="sendMessage()">Send</button>
             </div>
             <div class="hint">Try: "HR recruitment done", "add task: call shazmi in personal projects", "what's blocked?"</div>
+        </div>
+
+        <div class="dump-panel" id="dumpPanel">
+            <div>
+                <div class="dump-label">Paste or voice your meeting / conversation summary</div>
+            </div>
+            <textarea class="dump-textarea" id="dumpField" placeholder="e.g. Had a call with client today. Golden Choice CRM is now 90% done, just waiting for UAT. Dr Mani proposal has been approved and submitted. HR recruitment is still blocked — waiting for budget approval from finance. Started working on the trading bot strategy, maybe 40% in. Need to add a new task to follow up with Shazmi next week about the Dopermint deck."></textarea>
+            <div class="dump-actions">
+                <button class="dump-voice" id="dumpVoiceBtn" onclick="startDumpVoice()" title="Voice note">🎤</button>
+                <button class="dump-clear" onclick="document.getElementById('dumpField').value=''">Clear</button>
+                <button class="dump-submit" id="dumpBtn" onclick="processDump()">Process &amp; Update Tasks</button>
+            </div>
+            <div class="dump-examples">
+                Works with any format — meeting notes, WhatsApp copy-paste, voice transcript, brain dump. Claude will extract what matters and update your sheet.
+            </div>
         </div>
     </div>
 
@@ -574,7 +647,150 @@ function startVoice() {
     r.onerror=r.onend=()=>btn.classList.remove('active');
 }
 
-function toggleDrawer() {
+function switchMode(mode) {
+    const isChat = mode === 'chat';
+    document.getElementById('tabChat').classList.toggle('active', isChat);
+    document.getElementById('tabDump').classList.toggle('active', !isChat);
+    document.getElementById('chatPanel').style.display  = isChat  ? '' : 'none';
+    document.getElementById('dumpPanel').classList.toggle('active', !isChat);
+}
+
+async function processDump() {
+    const text = document.getElementById('dumpField').value.trim();
+    if (!text) { alert('Paste or speak your meeting summary first.'); return; }
+    if (!cfg.apiKey) { openSetup(); return; }
+
+    const btn = document.getElementById('dumpBtn');
+    btn.disabled = true; btn.textContent = 'Processing...';
+
+    // Switch to chat to show the result
+    switchMode('chat');
+    addMsg('user', '📋 Meeting dump:\n\n' + text);
+    const thinking = addThinking();
+
+    try {
+        const parsed = await callClaudeDump(text);
+        thinking.remove();
+
+        const actions = parsed.actions || [];
+        let changed = false;
+
+        for (const a of actions) {
+            if (a.type === 'update') {
+                const t = state.tasks.find(t => t.id === a.id);
+                if (t) { Object.assign(t, a.changes); changed = true; }
+            } else if (a.type === 'create') {
+                state.tasks.push({
+                    id: state.nextId++,
+                    name:     a.name     || 'New Task',
+                    category: CATEGORIES.includes(a.category) ? a.category : 'Personal Projects',
+                    status:   STATUSES.includes(a.status)     ? a.status   : 'To Do',
+                    priority: a.priority || 'Medium',
+                    dueDate:  a.dueDate  || '',
+                    notes:    a.notes    || '',
+                    percent:  a.percent  || 0
+                });
+                changed = true;
+            } else if (a.type === 'delete') {
+                state.tasks = state.tasks.filter(t => t.id !== a.id);
+                changed = true;
+            }
+        }
+
+        addMsg('ai', parsed.message || 'Done.');
+        state.history.push({ role: 'assistant', content: parsed.message || 'Done.' });
+
+        if (changed) {
+            saveTasks(); renderUI();
+            if (cfg.sheetUrl) pushToSheet();
+        }
+
+        document.getElementById('dumpField').value = '';
+    } catch(err) {
+        thinking.remove();
+        addMsg('ai', `Error: ${err.message}`);
+    }
+
+    btn.disabled = false; btn.textContent = 'Process & Update Tasks';
+}
+
+async function callClaudeDump(summary) {
+    const system = `You are the AI brain of Shaz's task manager (Dopermintgroup). You are processing a meeting summary, conversation recap, or end-of-day brain dump.
+
+Your job is to extract EVERYTHING task-related from the text and apply it to Shaz's tasks.
+
+Sheet tabs: ${CATEGORIES.join(', ')}
+Task fields: id, name, category, status, priority, dueDate, notes, percent
+
+Current tasks:
+${JSON.stringify(state.tasks, null, 2)}
+
+Extract and apply:
+- Any task mentioned as done/finished/completed/submitted/approved → status:"Done", percent:100
+- Any task mentioned as in progress/started/working on/ongoing → status:"In Progress"  
+- Any task mentioned as blocked/stuck/waiting/pending/tertangguh → status:"Blocked"
+- Any percentage mentioned → update percent
+- Any new action item / follow up / need to → create as new task in the most relevant category
+- Any notes, context, or details mentioned about a task → append to that task's notes field
+- Any due date or deadline mentioned → update dueDate
+- If someone's name is mentioned doing something → add as note on the relevant task
+
+Be thorough — extract EVERY task-related signal from the summary, even indirect ones.
+Match existing tasks by partial name (case-insensitive).
+For new tasks, pick the best category based on context.
+
+Reply with a clear summary of EVERY change you made, listing each task updated and what changed.
+Be specific: "Updated Golden Choice: 90% → In Progress. Added note: waiting for UAT."
+
+Respond ONLY with valid JSON (no markdown, no backticks):
+{"message":"detailed summary of all changes made","actions":[]}
+
+Action types:
+{"type":"update","id":<number>,"changes":{"status"?:string,"percent"?:number,"priority"?:string,"dueDate"?:string,"notes"?:string}}
+{"type":"create","name":string,"category":string,"status":"To Do","priority":"Medium","dueDate":"","notes":"","percent":0}
+{"type":"delete","id":<number>}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': cfg.apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 2000,
+            system,
+            messages: [{ role: 'user', content: summary }]
+        })
+    });
+
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `API error ${res.status}`); }
+    const data = await res.json();
+    const raw  = (data.content?.[0]?.text || '{}').replace(/```json|```/g,'').trim();
+    try { return JSON.parse(raw); } catch { return { message: raw, actions: [] }; }
+}
+
+
+function startDumpVoice() {
+    if (!SR) { alert('Speech recognition not supported.'); return; }
+    const r = new SR();
+    const btn = document.getElementById('dumpVoiceBtn');
+    r.lang = 'en-US'; r.interimResults = false; r.continuous = true;
+    r.start(); btn.classList.add('active'); btn.textContent = '⏹';
+    let transcript = '';
+    r.onresult = e => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            transcript += e.results[i][0].transcript + ' ';
+        }
+        document.getElementById('dumpField').value = transcript.trim();
+    };
+    btn.onclick = () => { r.stop(); };
+    r.onend = () => { btn.classList.remove('active'); btn.textContent = '🎤'; btn.onclick = startDumpVoice; };
+}
+
+
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('drawerOverlay');
     const closeBtn = document.getElementById('drawerClose');
