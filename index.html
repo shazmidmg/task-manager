@@ -1003,15 +1003,124 @@ function clearAll() {
 
 <!--
 GOOGLE APPS SCRIPT — paste into Extensions > Apps Script in your "Shaz Ai Task Manager" sheet.
-Your tabs: Personal Projects | Client Projects | Talents | Dopermint Projects
-Columns:   A=Checkbox  B=Task Name  C=Status  D=Priority  E=Due Date  F=Added Date  G=Notes  H=% Complete
+Tabs: Personal Projects | Client Projects | Talents | Dopermint Projects
+Columns: A=Checkbox  B=Task Name  C=Status  D=Priority  E=Due Date  F=Added Date  G=Notes  H=% Complete
 
 === PASTE FROM HERE ===
 
 const TABS = ['Personal Projects', 'Client Projects', 'Talents', 'Dopermint Projects'];
 
+// ── Run this ONCE manually to set up dropdowns + formatting on all sheets ──
+function setupSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tz = Session.getScriptTimeZone();
+
+  TABS.forEach(tabName => {
+    const sheet = ss.getSheetByName(tabName);
+    if (!sheet) return;
+
+    // Ensure header row
+    const headers = ['☑', 'Task Name', 'Status', 'Priority', 'Due Date', 'Added Date', 'Notes', '% Complete'];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setFontWeight('bold')
+      .setBackground('#1a1a2e')
+      .setFontColor('#ffffff');
+
+    // Column widths
+    sheet.setColumnWidth(1, 40);   // Checkbox
+    sheet.setColumnWidth(2, 220);  // Task Name
+    sheet.setColumnWidth(3, 110);  // Status
+    sheet.setColumnWidth(4, 90);   // Priority
+    sheet.setColumnWidth(5, 110);  // Due Date
+    sheet.setColumnWidth(6, 110);  // Added Date
+    sheet.setColumnWidth(7, 200);  // Notes
+    sheet.setColumnWidth(8, 90);   // % Complete
+
+    // Freeze header
+    sheet.setFrozenRows(1);
+
+    // Status dropdown — C2:C1000
+    const statusRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['To Do', 'In Progress', 'Done', 'Blocked'], true)
+      .setAllowInvalid(false)
+      .build();
+    sheet.getRange('C2:C1000').setDataValidation(statusRule);
+
+    // Priority dropdown — D2:D1000
+    const priorityRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['High', 'Medium', 'Low'], true)
+      .setAllowInvalid(false)
+      .build();
+    sheet.getRange('D2:D1000').setDataValidation(priorityRule);
+
+    // Date format — E2:F1000 (Due Date + Added Date) → dd/mm/yyyy
+    sheet.getRange('E2:F1000').setNumberFormat('dd/mm/yyyy');
+
+    // % Complete format — H2:H1000
+    sheet.getRange('H2:H1000').setNumberFormat('0"%"');
+
+    // Checkbox column — A2:A1000
+    const checkboxRule = SpreadsheetApp.newDataValidation()
+      .requireCheckbox()
+      .build();
+    sheet.getRange('A2:A1000').setDataValidation(checkboxRule);
+
+    // Conditional formatting for Status column
+    const rules = [];
+
+    const doneRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('Done')
+      .setBackground('#d1fae5').setFontColor('#065f46')
+      .setRanges([sheet.getRange('C2:C1000')]).build();
+
+    const progressRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('In Progress')
+      .setBackground('#dbeafe').setFontColor('#1e40af')
+      .setRanges([sheet.getRange('C2:C1000')]).build();
+
+    const blockedRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('Blocked')
+      .setBackground('#fee2e2').setFontColor('#991b1b')
+      .setRanges([sheet.getRange('C2:C1000')]).build();
+
+    const todoRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('To Do')
+      .setBackground('#f3f4f6').setFontColor('#374151')
+      .setRanges([sheet.getRange('C2:C1000')]).build();
+
+    // Priority conditional formatting
+    const highRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('High')
+      .setBackground('#fef2f2').setFontColor('#991b1b')
+      .setRanges([sheet.getRange('D2:D1000')]).build();
+
+    const medRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('Medium')
+      .setBackground('#fffbeb').setFontColor('#92400e')
+      .setRanges([sheet.getRange('D2:D1000')]).build();
+
+    const lowRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('Low')
+      .setBackground('#f0fdf4').setFontColor('#166534')
+      .setRanges([sheet.getRange('D2:D1000')]).build();
+
+    // Overdue highlighting — due date in past and status not Done
+    const overdueRule = SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND(E2<TODAY(),E2<>"",C2<>"Done")')
+      .setBackground('#fff1f0').setFontColor('#dc2626')
+      .setRanges([sheet.getRange('E2:E1000')]).build();
+
+    sheet.setConditionalFormatRules([doneRule, progressRule, blockedRule, todoRule, highRule, medRule, lowRule, overdueRule]);
+  });
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('✅ All sheets set up with dropdowns, date formats, and colour coding!', 'Setup Complete', 5);
+}
+
+// ── doGet: read all tasks ──
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tz = Session.getScriptTimeZone();
   const all = [];
   let counter = 1;
   TABS.forEach(tabName => {
@@ -1022,20 +1131,22 @@ function doGet(e) {
       const row = data[i];
       if (!row[1]) continue;
       all.push({
-        id:       counter++,
-        name:     row[1].toString(),
-        category: tabName,
-        status:   row[2] ? row[2].toString() : 'To Do',
-        priority: row[3] ? row[3].toString() : 'Medium',
-        dueDate:  row[4] ? Utilities.formatDate(new Date(row[4]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
-        notes:    row[6] ? row[6].toString() : '',
-        percent:  parseInt(row[7]) || 0
+        id:        counter++,
+        name:      row[1].toString(),
+        category:  tabName,
+        status:    row[2] ? row[2].toString() : 'To Do',
+        priority:  row[3] ? row[3].toString() : 'Medium',
+        dueDate:   row[4] ? Utilities.formatDate(new Date(row[4]), tz, 'yyyy-MM-dd') : '',
+        addedDate: row[5] ? Utilities.formatDate(new Date(row[5]), tz, 'yyyy-MM-dd') : '',
+        notes:     row[6] ? row[6].toString() : '',
+        percent:   parseInt(row[7]) || 0
       });
     }
   });
   return ContentService.createTextOutput(JSON.stringify({ tasks: all })).setMimeType(ContentService.MimeType.JSON);
 }
 
+// ── doPost: write all tasks ──
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
@@ -1048,15 +1159,17 @@ function doPost(e) {
       const lastRow = sheet.getLastRow();
       if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, 8).clearContent();
       catTasks.forEach((t, i) => {
+        const dueDate   = t.dueDate   ? new Date(t.dueDate)   : '';
+        const addedDate = t.addedDate ? new Date(t.addedDate) : new Date('2026-03-16');
         sheet.getRange(i + 2, 1, 1, 8).setValues([[
-          '',           // A: Checkbox
-          t.name,       // B: Task Name
-          t.status,     // C: Status
-          t.priority,   // D: Priority
-          t.dueDate,    // E: Due Date
-          '',           // F: Added Date
-          t.notes,      // G: Notes
-          t.percent     // H: % Complete
+          false,       // A: Checkbox
+          t.name,      // B: Task Name
+          t.status,    // C: Status
+          t.priority,  // D: Priority
+          dueDate,     // E: Due Date
+          addedDate,   // F: Added Date
+          t.notes,     // G: Notes
+          t.percent    // H: % Complete
         ]]);
       });
     });
