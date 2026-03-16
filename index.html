@@ -33,87 +33,10 @@
             min-height: 700px;
         }
 
-        .setup-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .setup-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 100%;
-        }
-
-        .setup-content h2 {
-            margin-bottom: 1rem;
-            color: #333;
-            font-size: 24px;
-        }
-
-        .setup-content p {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 1rem;
-            font-size: 14px;
-        }
-
-        .setup-input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        .setup-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 1.5rem;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-            flex: 1;
-        }
-
-        .btn-primary:hover {
-            background: #5568d3;
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-            flex: 1;
-        }
-
         .chat-area {
             display: flex;
             flex-direction: column;
             background: #fafafa;
-            min-height: 0;
-            overflow: hidden;
         }
 
         .messages-container {
@@ -328,11 +251,6 @@
             color: #333;
         }
 
-        .top-bar-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
         .btn-small {
             padding: 6px 12px;
             font-size: 12px;
@@ -340,31 +258,15 @@
             background: white;
             border-radius: 4px;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .btn-small:hover {
             background: #f0f0f0;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #f0f0f0;
-            border-radius: 4px;
-            font-size: 11px;
-            color: #666;
-        }
-
-        .status-badge.connected {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
-                min-height: auto;
             }
 
             .sidebar {
@@ -378,55 +280,16 @@
     </style>
 </head>
 <body>
-    <!-- Setup Modal -->
-    <div id="setupModal" class="setup-modal">
-        <div class="setup-content">
-            <h2>🚀 Setup Your Task Manager</h2>
-            <p>We need 2 things to get you started:</p>
-            
-            <div style="margin: 1.5rem 0;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333;">
-                    1. Claude API Key
-                </label>
-                <p style="font-size: 12px; color: #999; margin-bottom: 0.5rem;">
-                    Get it free from <a href="https://platform.anthropic.com/account/keys" target="_blank" style="color: #667eea;">platform.anthropic.com/account/keys</a>
-                </p>
-                <input type="password" id="apiKey" class="setup-input" placeholder="sk-ant-xxxxxxxxxxxxx">
+    <div class="container">
+        <div class="chat-area">
+            <div class="top-bar">
+                <h1>🤖 AI Task Manager</h1>
+                <button class="btn-small" onclick="clearAll()">Clear All</button>
             </div>
 
-            <div style="margin: 1.5rem 0;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333;">
-                    2. Your Name
-                </label>
-                <input type="text" id="userName" class="setup-input" placeholder="Your name" value="Dopermintgroup">
-            </div>
-
-            <div class="setup-buttons">
-                <button class="btn btn-primary" onclick="startApp()">Start Using App</button>
-                <button class="btn btn-secondary" onclick="skipSetup()">Skip for Now</button>
-            </div>
-
-            <p style="margin-top: 1rem; font-size: 12px; color: #999;">
-                💡 <strong>Note:</strong> Your API key is stored locally in your browser only. It's never sent anywhere else.
-            </p>
-        </div>
-    </div>
-
-    <!-- Main App -->
-    <div id="app" style="display: none; height: 100vh; max-height: 100vh;">
-        <div class="container" style="height: 100%;">
-            <div class="chat-area">
-                <div class="top-bar">
-                    <h1>📊 Task Manager</h1>
-                    <div class="top-bar-buttons">
-                        <span class="status-badge" id="statusBadge">Initializing...</span>
-                        <button class="btn-small" onclick="resetApp()">Reset</button>
-                    </div>
-                </div>
-
-                <div class="messages-container" id="messagesContainer">
-                    <div class="message ai">
-                        <div class="message-content">👋 Hey! I'm your personal AI task assistant. I understand natural language, so tell me anything:
+            <div class="messages-container" id="messagesContainer">
+                <div class="message ai">
+                    <div class="message-content">👋 Hey! I'm your personal AI task assistant. I understand natural language, so tell me anything:
 
 📝 Update tasks: "Finished proposal v10", "Golden Choice 80%", "Trading bot blocked"
 ➕ Create tasks: "Add task: Call Shazmi personal", "New: Review deck"
@@ -434,31 +297,27 @@
 🔄 Manage: "Delete completed", "Summarize my day"
 
 Just type naturally! 🚀</div>
-                    </div>
-                </div>
-
-                <div class="input-area">
-                    <div class="input-row">
-                        <input type="text" id="inputField" class="input-field" placeholder="Type or say your task...">
-                        <button class="btn-icon" id="voiceBtn" onclick="startVoiceInput()" title="Click to speak">🎤</button>
-                        <button class="btn-send" onclick="sendMessage()">Send</button>
-                    </div>
-                    <div class="hint-text">💡 Try: "Add task: call shazmi", "finished proposal", "what's blocked?", "what should I do next?"</div>
                 </div>
             </div>
 
-            <div class="sidebar">
-                <div class="sidebar-title">📊 Your Tasks</div>
-                <div id="tasksSidebar"></div>
+            <div class="input-area">
+                <div class="input-row">
+                    <input type="text" id="inputField" class="input-field" placeholder="Talk to me naturally...">
+                    <button class="btn-icon" id="voiceBtn" onclick="startVoiceInput()" title="Click to speak">🎤</button>
+                    <button class="btn-send" onclick="sendMessage()">Send</button>
+                </div>
+                <div class="hint-text">💡 Try: "finished proposal", "add task: call shazmi", "what's blocked?", "what should I do next?"</div>
             </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-title">📊 Your Tasks</div>
+            <div id="tasksSidebar"></div>
         </div>
     </div>
 
     <script>
-        // State management
         let state = {
-            apiKey: localStorage.getItem('apiKey') || '',
-            userName: localStorage.getItem('userName') || 'User',
             tasks: JSON.parse(localStorage.getItem('tasks')) || [
                 { id: 1, name: 'Dr. Mani healthcare proposal', category: 'Client Projects', status: 'Done', percent: 100 },
                 { id: 2, name: 'Golden Choice respond.io config', category: 'Client Projects', status: 'In Progress', percent: 80 },
@@ -471,44 +330,16 @@ Just type naturally! 🚀</div>
             nextTaskId: 7
         };
 
-        let recognitionActive = false;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        function startApp() {
-            const apiKey = document.getElementById('apiKey').value;
-            const userName = document.getElementById('userName').value;
-
-            if (!apiKey) {
-                alert('Please enter your Claude API key');
-                return;
-            }
-
-            state.apiKey = apiKey;
-            state.userName = userName;
-
-            localStorage.setItem('apiKey', apiKey);
-            localStorage.setItem('userName', userName);
-
-            document.getElementById('setupModal').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            updateUI();
-        }
-
-        function skipSetup() {
-            document.getElementById('setupModal').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            updateUI();
-        }
 
         function startVoiceInput() {
             if (!SpeechRecognition) {
-                alert('Speech recognition not supported in your browser');
+                alert('Speech recognition not supported');
                 return;
             }
 
             const recognition = new SpeechRecognition();
             recognition.start();
-            recognitionActive = true;
             document.getElementById('voiceBtn').classList.add('active');
 
             recognition.onresult = (event) => {
@@ -520,81 +351,37 @@ Just type naturally! 🚀</div>
             };
 
             recognition.onend = () => {
-                recognitionActive = false;
                 document.getElementById('voiceBtn').classList.remove('active');
             };
         }
 
-        async function parseTaskWithAI(text) {
-            if (!state.apiKey) {
-                return parseTaskSimple(text);
-            }
-
-            const systemPrompt = `You are a personal AI task assistant. Your job is to understand what the user wants and process it.
-
-Current tasks: ${JSON.stringify(state.tasks)}
-
-Based on the user's message, you should:
-- Extract task operations (create/update/delete/query)
-- Return a JSON response with:
-  {
-    "action": "update|create|delete|query|insight",
-    "tasks": [list of task operations],
-    "response": "Your natural language response to user"
-  }
-
-IMPORTANT: Always respond with valid JSON only. No other text.
-If task name is unclear, try to match to existing tasks.
-Be conversational in your response.`;
-
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': state.apiKey,
-                        'anthropic-version': '2023-06-01'
-                    },
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        model: 'claude-3-5-haiku-20241022',
-                        max_tokens: 500,
-                        messages: [{
-                            role: 'user',
-                            content: `${systemPrompt}\n\nUser message: "${text}"\n\nRespond ONLY with JSON.`
-                        }]
-                    })
-                });
-
-                clearTimeout(timeout);
-
-                if (!response.ok) {
-                    console.error('API Error:', response.status, response.statusText);
-                    return parseTaskSimple(text);
-                }
-
-                const data = await response.json();
-                if (data.content && data.content[0]) {
-                    const content = data.content[0].text;
-                    const jsonMatch = content.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        return JSON.parse(jsonMatch[0]);
-                    }
-                }
-                return parseTaskSimple(text);
-            } catch (e) {
-                console.error('API error:', e.message);
-                return parseTaskSimple(text);
-            }
-        }
-
-        function parseTaskSimple(text) {
-            const updates = [];
+        function parseUserInput(text) {
             const lower = text.toLowerCase();
+            const result = {
+                action: 'query',
+                taskUpdates: [],
+                newTasks: [],
+                response: ''
+            };
 
+            // Task creation
+            if (lower.includes('add task') || lower.includes('new task') || (lower.includes('create') && !lower.includes('what'))) {
+                const match = text.match(/(?:add|new|create)\s+(?:task:?\s+)?(.+?)(?:\.|$)/i);
+                if (match) {
+                    const taskName = match[1].trim();
+                    result.newTasks.push({
+                        name: taskName,
+                        category: 'Personal Projects',
+                        status: 'To Do',
+                        percent: 0
+                    });
+                    result.response = `✓ Created task: "${taskName}"`;
+                    return result;
+                }
+            }
+
+            // Task updates
+            let detectedUpdates = [];
             const keywords = {
                 'proposal': 'Dr. Mani healthcare proposal',
                 'golden choice': 'Golden Choice respond.io config',
@@ -604,9 +391,10 @@ Be conversational in your response.`;
                 'lavish': 'Lavish Dine landing page'
             };
 
-            let status = 'To Do';
-            let percent = 0;
+            let status = null;
+            let percent = null;
 
+            // Detect status
             if (lower.includes('done') || lower.includes('finished') || lower.includes('completed')) {
                 status = 'Done';
                 percent = 100;
@@ -618,89 +406,107 @@ Be conversational in your response.`;
                 percent = 0;
             }
 
+            // Detect percentage
             const percentMatch = text.match(/(\d+)\s*%/);
             if (percentMatch) {
                 percent = parseInt(percentMatch[1]);
             }
 
+            // Find matching tasks
             for (const [keyword, taskName] of Object.entries(keywords)) {
                 if (lower.includes(keyword)) {
                     const task = state.tasks.find(t => t.name.toLowerCase().includes(keyword));
                     if (task) {
-                        updates.push({
-                            task_name: task.name,
-                            status: status,
-                            percent: percent,
-                            notes: lower.includes('waiting') ? 'Waiting for updates' : ''
+                        detectedUpdates.push({
+                            id: task.id,
+                            status: status || task.status,
+                            percent: percent !== null ? percent : task.percent
                         });
                     }
                 }
             }
 
-            return updates;
-        }
+            // Apply updates
+            if (detectedUpdates.length > 0) {
+                detectedUpdates.forEach(update => {
+                    const task = state.tasks.find(t => t.id === update.id);
+                    if (task) {
+                        task.status = update.status;
+                        task.percent = update.percent;
+                    }
+                });
 
-        function updateTasksFromParse(updates) {
-            updates.forEach(update => {
-                const task = state.tasks.find(t => t.name === update.task_name || t.name.toLowerCase().includes(update.task_name.toLowerCase()));
-                if (task) {
-                    task.status = update.status;
-                    task.percent = update.percent;
-                    if (update.notes) task.notes = update.notes;
+                result.action = 'update';
+                result.response = `✓ Updated ${detectedUpdates.length} task${detectedUpdates.length > 1 ? 's' : ''}!\n\n`;
+                detectedUpdates.forEach(u => {
+                    const task = state.tasks.find(t => t.id === u.id);
+                    result.response += `• ${task.name}: ${u.status} (${u.percent}%)\n`;
+                });
+                return result;
+            }
+
+            // Queries
+            if (lower.includes('what') && (lower.includes('next') || lower.includes('should'))) {
+                const inProgress = state.tasks.filter(t => t.status === 'In Progress');
+                const todo = state.tasks.filter(t => t.status === 'To Do');
+                result.response = '📋 Here\'s what I recommend:\n\n';
+                if (inProgress.length > 0) {
+                    result.response += `🔴 FINISH THESE:\n${inProgress.map(t => `• ${t.name} (${t.percent}%)`).join('\n')}\n\n`;
                 }
-            });
+                if (todo.length > 0) {
+                    result.response += `🟢 START NEXT:\n${todo.map(t => `• ${t.name}`).join('\n')}\n`;
+                }
+            } else if (lower.includes('blocked') || lower.includes('stuck')) {
+                const blocked = state.tasks.filter(t => t.status === 'Blocked');
+                result.response = blocked.length > 0 
+                    ? `🚨 BLOCKED TASKS:\n${blocked.map(t => `• ${t.name}`).join('\n')}`
+                    : `✅ No blocked tasks!`;
+            } else if (lower.includes('summarize') || lower.includes('summary') || lower.includes('day')) {
+                const done = state.tasks.filter(t => t.status === 'Done').length;
+                const inProgress = state.tasks.filter(t => t.status === 'In Progress').length;
+                const blocked = state.tasks.filter(t => t.status === 'Blocked').length;
+                const completion = Math.round((done / state.tasks.length) * 100);
+                result.response = `📊 YOUR SUMMARY\n\n✅ Done: ${done}\n⏳ In Progress: ${inProgress}\n🚨 Blocked: ${blocked}\n\n📈 Completion: ${completion}%\n\nGreat work! 🚀`;
+            } else if (lower.includes('urgent') || lower.includes('priority')) {
+                const urgent = state.tasks.filter(t => t.status !== 'Done').slice(0, 3);
+                result.response = `⚡ TOP PRIORITIES:\n${urgent.map(t => `• ${t.name}`).join('\n')}`;
+            } else if (lower.includes('delete') && lower.includes('completed')) {
+                const beforeCount = state.tasks.length;
+                state.tasks = state.tasks.filter(t => t.status !== 'Done');
+                result.response = `🗑️ Deleted ${beforeCount - state.tasks.length} completed task${beforeCount - state.tasks.length !== 1 ? 's' : ''}`;
+            } else {
+                result.response = `Got it! You can:\n• Update tasks: "finished proposal", "golden choice 80%"\n• Create: "add task: call shazmi"\n• Ask: "what's blocked?", "what's next?"\n• Summarize: "summary my day"`;
+            }
+
+            return result;
         }
 
-        async function sendMessage() {
+        function sendMessage() {
             const input = document.getElementById('inputField').value.trim();
             if (!input) return;
 
-            const sendBtn = document.querySelector('.btn-send');
-            sendBtn.disabled = true;
-
-            // Add user message
             state.messages.push({ type: 'user', content: input });
             addMessageToUI('user', input);
             document.getElementById('inputField').value = '';
 
-            // Show loading state
-            const statusBadge = document.getElementById('statusBadge');
-            const originalBadge = statusBadge.textContent;
-            statusBadge.textContent = 'Processing...';
-            statusBadge.style.opacity = '0.6';
-
-            // Get AI response
-            const aiResponse = await parseTaskWithAI(input);
+            const parsed = parseUserInput(input);
             
-            // Apply task changes based on action
-            if (aiResponse.action === 'create' && aiResponse.tasks) {
-                state.tasks.push(...aiResponse.tasks);
-            } else if (aiResponse.action === 'update' && aiResponse.tasks) {
-                aiResponse.tasks.forEach(update => {
-                    const task = state.tasks.find(t => t.name.toLowerCase().includes(update.task_name.toLowerCase()) || t.id === update.id);
-                    if (task) {
-                        if (update.status) task.status = update.status;
-                        if (update.percent !== undefined) task.percent = update.percent;
-                        if (update.notes) task.notes = update.notes;
-                    }
+            if (parsed.newTasks.length > 0) {
+                parsed.newTasks.forEach(newTask => {
+                    state.tasks.push({
+                        id: state.nextTaskId++,
+                        ...newTask
+                    });
                 });
-            } else if (aiResponse.action === 'delete' && aiResponse.tasks) {
-                state.tasks = state.tasks.filter(t => !aiResponse.tasks.some(d => d.id === t.id || d.name.toLowerCase().includes(t.name.toLowerCase())));
             }
 
-            // Add AI response
-            state.messages.push({ type: 'ai', content: aiResponse.response });
-            addMessageToUI('ai', aiResponse.response);
+            state.messages.push({ type: 'ai', content: parsed.response });
+            addMessageToUI('ai', parsed.response);
 
-            // Save state
             localStorage.setItem('tasks', JSON.stringify(state.tasks));
             localStorage.setItem('messages', JSON.stringify(state.messages));
 
-            // Update UI
             updateUI();
-            sendBtn.disabled = false;
-            statusBadge.textContent = originalBadge;
-            statusBadge.style.opacity = '1';
         }
 
         function addMessageToUI(type, content) {
@@ -713,22 +519,11 @@ Be conversational in your response.`;
         }
 
         function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
             return text.replace(/[&<>"']/g, m => map[m]);
         }
 
         function updateUI() {
-            updateTasksSidebar();
-            updateStatusBadge();
-        }
-
-        function updateTasksSidebar() {
             const sidebar = document.getElementById('tasksSidebar');
             const categories = {};
 
@@ -748,13 +543,15 @@ Be conversational in your response.`;
                     const taskEl = document.createElement('div');
                     taskEl.className = 'task-item';
                     const statusClass = `status-${task.status.toLowerCase().replace(' ', '-')}`;
+                    const statusColor = getStatusColor(task.status);
+                    
                     taskEl.innerHTML = `
                         <div class="task-header">
                             <div class="task-name" title="${task.name}">${task.name}</div>
                             <div class="task-status ${statusClass}">●</div>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${task.percent}%; background: ${getStatusColor(task.status)}"></div>
+                            <div class="progress-fill" style="width: ${task.percent}%; background: ${statusColor}"></div>
                         </div>
                         <div class="task-percent">${task.percent}% complete</div>
                     `;
@@ -764,49 +561,22 @@ Be conversational in your response.`;
         }
 
         function getStatusColor(status) {
-            const colors = {
-                'Done': '#10b981',
-                'In Progress': '#3b82f6',
-                'Blocked': '#ef4444',
-                'To Do': '#9ca3af'
-            };
+            const colors = {'Done': '#10b981', 'In Progress': '#3b82f6', 'Blocked': '#ef4444', 'To Do': '#9ca3af'};
             return colors[status] || '#9ca3af';
         }
 
-        function updateStatusBadge() {
-            const badge = document.getElementById('statusBadge');
-            badge.textContent = state.apiKey ? '✓ Connected' : 'API Key Missing';
-            badge.className = state.apiKey ? 'status-badge connected' : 'status-badge';
-        }
-
-        function resetApp() {
-            if (confirm('Reset all tasks and messages?')) {
+        function clearAll() {
+            if (confirm('Clear all tasks and messages?')) {
                 localStorage.clear();
                 location.reload();
             }
         }
 
-        // Keyboard shortcut
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('inputField').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendMessage();
-            });
-
-            if (state.apiKey) {
-                document.getElementById('setupModal').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                updateUI();
-            }
+        document.getElementById('inputField').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
 
-        // Check on load
-        window.addEventListener('load', () => {
-            if (state.apiKey) {
-                document.getElementById('setupModal').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                updateUI();
-            }
-        });
+        updateUI();
     </script>
 </body>
 </html>
