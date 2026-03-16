@@ -184,6 +184,40 @@
         .progress-bar { background: #f0f0f0; height: 3px; border-radius: 2px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
 
+        /* Drag & drop */
+        .task-card { position: relative; }
+        .task-card.dragging {
+            opacity: 0.4; border: 1.5px dashed #667eea;
+            background: #f0f0ff;
+        }
+        .task-card.drag-over { border-top: 2.5px solid #667eea; }
+        .cat-drop-zone {
+            min-height: 36px; border: 1.5px dashed #ddd;
+            border-radius: 7px; margin-bottom: 5px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; color: #ccc; transition: all 0.15s;
+        }
+        .cat-drop-zone.drag-over-zone {
+            border-color: #667eea; background: #f0f0ff; color: #667eea;
+        }
+        .drag-handle {
+            cursor: grab; color: #ddd; font-size: 13px;
+            padding: 0 4px 0 0; flex-shrink: 0; user-select: none;
+            touch-action: none;
+        }
+        .drag-handle:active { cursor: grabbing; }
+        .task-card.drag-preview {
+            position: fixed; z-index: 9999; pointer-events: none;
+            opacity: 0.92; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            width: 260px; transform: rotate(1.5deg);
+        }
+        .delete-btn {
+            background: none; border: none; cursor: pointer;
+            color: #ddd; font-size: 13px; padding: 0 0 0 4px;
+            flex-shrink: 0; line-height: 1; transition: color 0.15s;
+        }
+        .delete-btn:hover { color: #ef4444; }
+
         /* Sidebar tabs */
         .sidebar-tabs { display: flex; border-bottom: 1px solid #e8e8e8; background: white; }
         .sidebar-tab {
@@ -769,7 +803,6 @@ function renderUI() {
     const countEl = document.getElementById('taskCount');
     const archCnt = document.getElementById('archiveCount');
 
-    const active = state.tasks.filter(t => t.status !== 'Done' || true); // show all active tasks
     countEl.textContent = state.tasks.length + ' task' + (state.tasks.length!==1?'s':'');
     archCnt.textContent = state.archive.length ? `(${state.archive.length})` : '';
 
@@ -788,46 +821,264 @@ function renderUI() {
     state.tasks.forEach(t=>{ const c=CATEGORIES.includes(t.category)?t.category:'Personal Projects'; bycat[c].push(t); });
 
     sidebar.innerHTML='';
+
+    // Always show all 4 categories so user can drag into empty ones
     for (const cat of CATEGORIES) {
-        const tasks=bycat[cat]; if(!tasks.length) continue;
-        const lbl=document.createElement('div'); lbl.className='cat-label'; lbl.textContent=cat;
-        sidebar.appendChild(lbl);
-        tasks.forEach(task => {
-            const sk  = (task.status||'To Do').toLowerCase().replace(/ /g,'-');
-            const fill= {done:'#10b981','in-progress':'#3b82f6',blocked:'#ef4444','to-do':'#d1d5db'}[sk]||'#d1d5db';
-            const el  = document.createElement('div');
-            el.className = 'task-card';
+        const tasks = bycat[cat];
 
-            // Status options
-            const statusOpts = STATUSES.map(s =>
-                `<option value="${s}" ${task.status===s?'selected':''}>${s}</option>`
-            ).join('');
-            // Priority options
-            const prioOpts = PRIORITIES.map(p =>
-                `<option value="${p}" ${task.priority===p?'selected':''}>${p}</option>`
-            ).join('');
+        const catWrap = document.createElement('div');
+        catWrap.dataset.cat = cat;
 
-            el.innerHTML = `
-                <div class="task-row1">
-                    <div class="task-name${task.status==='Done'?' done':''}" title="${esc(task.name)}">${esc(task.name)}</div>
-                </div>
-                <div class="task-edit-row">
-                    <select class="task-select ${statusClass(task.status)}" onchange="updateTaskField(${task.id},'status',this.value,this)">${statusOpts}</select>
-                    <select class="task-select ${priorityClass(task.priority)}" onchange="updateTaskField(${task.id},'priority',this.value,this)">${prioOpts}</select>
-                </div>
-                <div class="task-edit-row" style="margin-top:4px;">
-                    <span style="font-size:9px;color:#bbb;flex-shrink:0;">Due</span>
-                    <input type="date" class="task-date" value="${task.dueDate||''}" onchange="updateTaskField(${task.id},'dueDate',this.value,this)" title="Due date">
-                    <span style="font-size:9px;color:#bbb;flex-shrink:0;margin-left:4px;">Added</span>
-                    <input type="date" class="task-date" value="${task.addedDate||TODAY}" onchange="updateTaskField(${task.id},'addedDate',this.value,this)" title="Added date">
-                </div>
-                <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:${task.percent}%;background:${fill}"></div></div>
-                <div style="font-size:9px;color:#bbb;margin-top:3px;">${task.percent}% complete</div>`;
-            sidebar.appendChild(el);
-        });
+        const lbl = document.createElement('div');
+        lbl.className = 'cat-label';
+        lbl.textContent = cat;
+        catWrap.appendChild(lbl);
+
+        if (tasks.length === 0) {
+            const dz = document.createElement('div');
+            dz.className = 'cat-drop-zone';
+            dz.textContent = 'Drop task here';
+            dz.dataset.cat = cat;
+            dz.dataset.dropzone = 'true';
+            catWrap.appendChild(dz);
+        } else {
+            tasks.forEach(task => buildTaskCard(task, catWrap));
+        }
+
+        sidebar.appendChild(catWrap);
     }
 
+    initDragDrop();
     renderArchive();
+}
+
+function buildTaskCard(task, parent) {
+    const sk   = (task.status||'To Do').toLowerCase().replace(/ /g,'-');
+    const fill = {done:'#10b981','in-progress':'#3b82f6',blocked:'#ef4444','to-do':'#d1d5db'}[sk]||'#d1d5db';
+    const el   = document.createElement('div');
+    el.className = 'task-card';
+    el.dataset.id = task.id;
+    el.draggable = true;
+
+    const statusOpts = STATUSES.map(s =>
+        `<option value="${s}" ${task.status===s?'selected':''}>${s}</option>`).join('');
+    const prioOpts = PRIORITIES.map(p =>
+        `<option value="${p}" ${task.priority===p?'selected':''}>${p}</option>`).join('');
+
+    el.innerHTML = `
+        <div class="task-row1">
+            <span class="drag-handle" title="Hold to drag">⠿</span>
+            <div class="task-name${task.status==='Done'?' done':''}"
+                 contenteditable="true"
+                 spellcheck="false"
+                 title="Click to edit name"
+                 style="flex:1;outline:none;border-radius:3px;padding:1px 3px;cursor:text;"
+                 onblur="updateTaskName(${task.id}, this)"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                 >${esc(task.name)}</div>
+            <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete task">✕</button>
+        </div>
+        <div class="task-edit-row">
+            <select class="task-select ${statusClass(task.status)}" onchange="updateTaskField(${task.id},'status',this.value,this)">${statusOpts}</select>
+            <select class="task-select ${priorityClass(task.priority)}" onchange="updateTaskField(${task.id},'priority',this.value,this)">${prioOpts}</select>
+        </div>
+        <div class="task-edit-row" style="margin-top:4px;">
+            <span style="font-size:9px;color:#bbb;flex-shrink:0;">Due</span>
+            <input type="date" class="task-date" value="${task.dueDate||''}" onchange="updateTaskField(${task.id},'dueDate',this.value,this)">
+            <span style="font-size:9px;color:#bbb;flex-shrink:0;margin-left:4px;">Added</span>
+            <input type="date" class="task-date" value="${task.addedDate||TODAY}" onchange="updateTaskField(${task.id},'addedDate',this.value,this)">
+        </div>
+        <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:${task.percent}%;background:${fill}"></div></div>
+        <div style="font-size:9px;color:#bbb;margin-top:3px;">${task.percent}% complete</div>`;
+
+    parent.appendChild(el);
+}
+
+function updateTaskName(id, el) {
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) return;
+    const newName = el.innerText.trim();
+    if (!newName) { el.innerText = task.name; return; }
+    if (newName === task.name) return;
+    task.name = newName;
+    saveTasks();
+    if (cfg.sheetUrl) pushToSheet();
+}
+
+function deleteTask(id) {
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) return;
+    if (!confirm(`Delete "${task.name}"?`)) return;
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    saveTasks(); renderUI();
+    if (cfg.sheetUrl) pushToSheet();
+}
+
+/* ═══════════════════════════
+   DRAG & DROP ENGINE
+═══════════════════════════ */
+let dragState = {
+    dragId: null,
+    preview: null,
+    longPressTimer: null,
+    touching: false,
+    startX: 0, startY: 0
+};
+
+function initDragDrop() {
+    const cards   = document.querySelectorAll('.task-card');
+    const zones   = document.querySelectorAll('.cat-drop-zone');
+
+    cards.forEach(card => {
+        // ── DESKTOP drag ──
+        card.addEventListener('dragstart', e => {
+            dragState.dragId = parseInt(card.dataset.id);
+            setTimeout(() => card.classList.add('dragging'), 0);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+        card.addEventListener('dragover', e => {
+            e.preventDefault();
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            card.classList.add('drag-over');
+        });
+        card.addEventListener('drop', e => {
+            e.preventDefault();
+            const targetId = parseInt(card.dataset.id);
+            if (dragState.dragId === targetId) return;
+            const targetTask = state.tasks.find(t => t.id === targetId);
+            reorderTask(dragState.dragId, targetId, targetTask.category);
+        });
+
+        // ── MOBILE long-press ──
+        card.addEventListener('touchstart', e => {
+            const touch = e.touches[0];
+            dragState.startX = touch.clientX;
+            dragState.startY = touch.clientY;
+            dragState.touching = true;
+            dragState.longPressTimer = setTimeout(() => {
+                if (!dragState.touching) return;
+                dragState.dragId = parseInt(card.dataset.id);
+                startMobileDrag(card, touch.clientX, touch.clientY);
+            }, 400);
+        }, { passive: true });
+
+        card.addEventListener('touchmove', e => {
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - dragState.startX);
+            const dy = Math.abs(touch.clientY - dragState.startY);
+            if (dx > 8 || dy > 8) clearTimeout(dragState.longPressTimer);
+            if (dragState.preview) {
+                e.preventDefault();
+                moveMobilePreview(touch.clientX, touch.clientY);
+                highlightDropTarget(touch.clientX, touch.clientY);
+            }
+        }, { passive: false });
+
+        card.addEventListener('touchend', e => {
+            dragState.touching = false;
+            clearTimeout(dragState.longPressTimer);
+            if (dragState.preview) {
+                const touch = e.changedTouches[0];
+                dropMobile(touch.clientX, touch.clientY);
+            }
+        });
+    });
+
+    // Desktop drop onto empty category zones
+    zones.forEach(zone => {
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            document.querySelectorAll('.drag-over-zone').forEach(el => el.classList.remove('drag-over-zone'));
+            zone.classList.add('drag-over-zone');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over-zone'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over-zone');
+            const cat = zone.dataset.cat;
+            moveTaskToCategory(dragState.dragId, cat);
+        });
+    });
+}
+
+function reorderTask(dragId, targetId, targetCat) {
+    const dragIdx   = state.tasks.findIndex(t => t.id === dragId);
+    const targetIdx = state.tasks.findIndex(t => t.id === targetId);
+    if (dragIdx === -1 || targetIdx === -1) return;
+    const [task] = state.tasks.splice(dragIdx, 1);
+    task.category = targetCat;
+    const newTargetIdx = state.tasks.findIndex(t => t.id === targetId);
+    state.tasks.splice(newTargetIdx, 0, task);
+    saveTasks(); renderUI();
+    if (cfg.sheetUrl) pushToSheet();
+}
+
+function moveTaskToCategory(dragId, cat) {
+    const task = state.tasks.find(t => t.id === dragId);
+    if (!task) return;
+    task.category = cat;
+    saveTasks(); renderUI();
+    if (cfg.sheetUrl) pushToSheet();
+}
+
+// Mobile drag preview
+function startMobileDrag(card, x, y) {
+    const preview = card.cloneNode(true);
+    preview.className = 'task-card drag-preview';
+    preview.style.width  = card.offsetWidth + 'px';
+    preview.style.left   = (x - card.offsetWidth / 2) + 'px';
+    preview.style.top    = (y - 30) + 'px';
+    document.body.appendChild(preview);
+    dragState.preview = preview;
+    card.classList.add('dragging');
+}
+
+function moveMobilePreview(x, y) {
+    if (!dragState.preview) return;
+    dragState.preview.style.left = (x - dragState.preview.offsetWidth / 2) + 'px';
+    dragState.preview.style.top  = (y - 30) + 'px';
+}
+
+function highlightDropTarget(x, y) {
+    document.querySelectorAll('.drag-over,.drag-over-zone').forEach(el => {
+        el.classList.remove('drag-over','drag-over-zone');
+    });
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+        if (el.classList.contains('task-card') && el.dataset.id && parseInt(el.dataset.id) !== dragState.dragId) {
+            el.classList.add('drag-over'); break;
+        }
+        if (el.dataset.dropzone) { el.classList.add('drag-over-zone'); break; }
+    }
+}
+
+function dropMobile(x, y) {
+    if (dragState.preview) { dragState.preview.remove(); dragState.preview = null; }
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.drag-over,.drag-over-zone').forEach(el => {
+        el.classList.remove('drag-over','drag-over-zone');
+    });
+
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+        if (el.classList.contains('task-card') && el.dataset.id) {
+            const targetId  = parseInt(el.dataset.id);
+            const targetTask= state.tasks.find(t => t.id === targetId);
+            if (targetId !== dragState.dragId && targetTask) {
+                reorderTask(dragState.dragId, targetId, targetTask.category);
+                return;
+            }
+        }
+        if (el.dataset.dropzone) {
+            moveTaskToCategory(dragState.dragId, el.dataset.cat);
+            return;
+        }
+    }
+    dragState.dragId = null;
 }
 
 function updateTaskField(id, field, value, el) {
