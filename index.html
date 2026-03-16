@@ -548,6 +548,9 @@ If task name is unclear, try to match to existing tasks.
 Be conversational in your response.`;
 
             try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
                 const response = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
                     headers: {
@@ -555,8 +558,9 @@ Be conversational in your response.`;
                         'x-api-key': state.apiKey,
                         'anthropic-version': '2023-06-01'
                     },
+                    signal: controller.signal,
                     body: JSON.stringify({
-                        model: 'claude-haiku-4.5-20241001',
+                        model: 'claude-3-5-haiku-20241022',
                         max_tokens: 500,
                         messages: [{
                             role: 'user',
@@ -564,6 +568,13 @@ Be conversational in your response.`;
                         }]
                     })
                 });
+
+                clearTimeout(timeout);
+
+                if (!response.ok) {
+                    console.error('API Error:', response.status, response.statusText);
+                    return parseTaskSimple(text);
+                }
 
                 const data = await response.json();
                 if (data.content && data.content[0]) {
@@ -573,11 +584,11 @@ Be conversational in your response.`;
                         return JSON.parse(jsonMatch[0]);
                     }
                 }
+                return parseTaskSimple(text);
             } catch (e) {
-                console.error('API error:', e);
+                console.error('API error:', e.message);
+                return parseTaskSimple(text);
             }
-
-            return parseTaskSimple(text);
         }
 
         function parseTaskSimple(text) {
