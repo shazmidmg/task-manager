@@ -238,6 +238,12 @@
 
         <hr class="setup-divider">
 
+        <label class="setup-label">OpenAI API Key <span style="font-weight:400;color:#bbb;">(for meeting audio transcription)</span></label>
+        <input type="password" class="setup-input" id="setupOpenAiKey" placeholder="sk-..." />
+        <p class="setup-hint">Used only for Whisper transcription of MP3/MP4 uploads. Get yours at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>. Leave blank to disable audio upload.</p>
+
+        <hr class="setup-divider">
+
         <label class="setup-label">Google Apps Script URL</label>
         <input type="text" class="setup-input" id="setupSheetUrl" placeholder="https://script.google.com/macros/s/.../exec" />
         <p class="setup-hint">Connects to your "Shaz Ai Task Manager" spreadsheet. Leave blank for offline mode.</p>
@@ -339,23 +345,27 @@ let state = {
 };
 
 let cfg = {
-    apiKey:   localStorage.getItem('shaz_apiKey')  ||'',
-    sheetUrl: localStorage.getItem('shaz_sheetUrl')||''
+    apiKey:    localStorage.getItem('shaz_apiKey')    ||'',
+    openAiKey: localStorage.getItem('shaz_openAiKey') ||'',
+    sheetUrl:  localStorage.getItem('shaz_sheetUrl')  ||''
 };
 
 function openSetup() {
-    document.getElementById('setupApiKey').value   = cfg.apiKey;
-    document.getElementById('setupSheetUrl').value = cfg.sheetUrl;
+    document.getElementById('setupApiKey').value    = cfg.apiKey;
+    document.getElementById('setupOpenAiKey').value = cfg.openAiKey;
+    document.getElementById('setupSheetUrl').value  = cfg.sheetUrl;
     document.getElementById('setupOverlay').classList.remove('hidden');
 }
 
 function saveSetup() {
-    const k = document.getElementById('setupApiKey').value.trim();
-    const u = document.getElementById('setupSheetUrl').value.trim();
+    const k  = document.getElementById('setupApiKey').value.trim();
+    const ok = document.getElementById('setupOpenAiKey').value.trim();
+    const u  = document.getElementById('setupSheetUrl').value.trim();
     if (!k) { alert('Please enter your Anthropic API key.'); return; }
-    cfg.apiKey = k; cfg.sheetUrl = u;
-    localStorage.setItem('shaz_apiKey', k);
-    localStorage.setItem('shaz_sheetUrl', u);
+    cfg.apiKey = k; cfg.openAiKey = ok; cfg.sheetUrl = u;
+    localStorage.setItem('shaz_apiKey',    k);
+    localStorage.setItem('shaz_openAiKey', ok);
+    localStorage.setItem('shaz_sheetUrl',  u);
     document.getElementById('setupOverlay').classList.add('hidden');
     setBadge(u ? 'synced' : 'offline', u ? 'Connected' : 'Offline');
     if (u) pullFromSheet();
@@ -456,14 +466,42 @@ Match tasks by partial name (case-insensitive). Never guess when ambiguous — a
     try { return JSON.parse(raw); } catch { return {message:raw, actions:[]}; }
 }
 
-async function callClaudeWithAudio(userMsg, base64data, mediaType) {
+async function callClaudeWithAudio(userMsg, file) {
+    if (!cfg.openAiKey) {
+        openSetup();
+        throw new Error('OpenAI API key required for audio transcription. Add it in Settings.');
+    }
+
+    // Step 1 — Whisper transcription
+    const btn = document.getElementById('sendBtn');
+    btn.textContent = 'Transcribing...';
+
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'text');
+
+    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${cfg.openAiKey}` },
+        body: formData
+    });
+
+    if (!whisperRes.ok) {
+        const e = await whisperRes.json().catch(() => ({}));
+        throw new Error('Whisper error: ' + (e.error?.message || whisperRes.status));
+    }
+
+    const transcript = await whisperRes.text();
+    btn.textContent = 'Analysing...';
+
+    // Show transcript snippet in chat
+    addMsg('ai', `📝 Transcript received (${Math.round(transcript.length / 5)} words). Analysing tasks...`);
+
+    // Step 2 — Claude processes transcript
     const system = `You are the AI brain of Shaz's task manager (Dopermintgroup).
 
-You have been given a meeting recording or audio file. Your job is to:
-1. Listen to / transcribe the full audio
-2. Extract EVERY task-related signal mentioned
-3. Match them against Shaz's current tasks and update accordingly
-4. Create new tasks for any new action items or follow-ups mentioned
+You have been given a transcript of a meeting or voice recording. Extract EVERY task-related signal and apply it to Shaz's tasks.
 
 Sheet tabs: ${CATEGORIES.join(', ')}
 Task fields: id, name, category, status, priority, dueDate, notes, percent
@@ -472,31 +510,25 @@ Current tasks:
 ${JSON.stringify(state.tasks, null, 2)}
 
 Extract and apply:
-- Tasks mentioned as done/finished/completed → status:"Done", percent:100
+- Tasks mentioned as done/finished/completed/submitted/approved → status:"Done", percent:100
 - Tasks mentioned as in progress/started/working on → status:"In Progress"
-- Tasks mentioned as blocked/stuck/waiting → status:"Blocked"
+- Tasks mentioned as blocked/stuck/waiting/pending → status:"Blocked"
 - Any percentage mentioned → update percent
-- New action items / follow-ups / "need to" → create as new task in best category
+- New action items / follow-ups / "need to" / "should" → create as new task in best matching category
 - Context, decisions, names mentioned → append to task notes
 - Deadlines or dates mentioned → update dueDate
 
-Be thorough. Reply with a detailed summary of every change made.
+Be thorough — extract EVERY signal, even indirect ones.
+Match existing tasks by partial name (case-insensitive).
+Reply with a clear bullet-point summary of every change made.
 
 Respond ONLY with valid JSON (no markdown, no backticks):
-{"message":"detailed summary of all changes","actions":[]}
+{"message":"bullet-point summary of all changes","actions":[]}
 
 Action types:
 {"type":"update","id":<number>,"changes":{"status"?:string,"percent"?:number,"priority"?:string,"dueDate"?:string,"notes"?:string}}
 {"type":"create","name":string,"category":string,"status":"To Do","priority":"Medium","dueDate":"","notes":"","percent":0}
 {"type":"delete","id":<number>}`;
-
-    const userContent = [
-        {
-            type: 'audio',
-            source: { type: 'base64', media_type: mediaType, data: base64data }
-        },
-        { type: 'text', text: userMsg }
-    ];
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -510,12 +542,13 @@ Action types:
             model: 'claude-sonnet-4-20250514',
             max_tokens: 2000,
             system,
-            messages: [{ role: 'user', content: userContent }]
+            messages: [{ role: 'user', content: `Meeting transcript:\n\n${transcript}\n\nAdditional note from Shaz: ${userMsg}` }]
         })
     });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `API error ${res.status}`); }
+
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `API error ${res.status}`); }
     const data = await res.json();
-    const raw  = (data.content?.[0]?.text || '{}').replace(/```json|```/g,'').trim();
+    const raw  = (data.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim();
     try { return JSON.parse(raw); } catch { return { message: raw, actions: [] }; }
 }
 
@@ -544,9 +577,7 @@ async function sendMessage() {
         let parsed;
         if (hasFile) {
             btn.textContent = 'Reading file...';
-            const base64data = await readFileAsBase64(attachedFile);
-            const mediaType  = getMediaType(attachedFile);
-            parsed = await callClaudeWithAudio(userContent, base64data, mediaType);
+            parsed = await callClaudeWithAudio(userContent, attachedFile);
             clearFile();
         } else {
             parsed = await callClaude(text);
