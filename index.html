@@ -6,324 +6,183 @@
     <title>Shaz AI Task Manager</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             padding: 20px;
         }
-
-        /* ── SETUP MODAL ── */
         .setup-overlay {
             position: fixed; inset: 0;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.75);
             display: flex; align-items: center; justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(4px);
+            z-index: 1000; backdrop-filter: blur(4px);
         }
         .setup-overlay.hidden { display: none; }
         .setup-box {
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
-            width: 100%;
-            max-width: 480px;
+            background: white; border-radius: 16px; padding: 30px;
+            width: 100%; max-width: 500px;
             box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+            max-height: 90vh; overflow-y: auto;
         }
-        .setup-box h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 6px; }
-        .setup-box p { font-size: 13px; color: #666; margin-bottom: 24px; line-height: 1.6; }
-        .setup-label { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px; display: block; }
+        .setup-box h2 { font-size: 18px; color: #1a1a2e; margin-bottom: 4px; }
+        .setup-box .subtitle { font-size: 12px; color: #888; margin-bottom: 22px; }
+        .setup-label { font-size: 11px; font-weight: 700; color: #555; margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
         .setup-input {
             width: 100%; padding: 10px 12px;
-            border: 1.5px solid #ddd; border-radius: 8px;
+            border: 1.5px solid #e0e0e0; border-radius: 8px;
             font-size: 13px; font-family: inherit;
-            margin-bottom: 16px;
-            transition: border-color 0.2s;
+            margin-bottom: 6px; transition: border-color 0.2s;
         }
         .setup-input:focus { outline: none; border-color: #667eea; }
-        .setup-hint { font-size: 11px; color: #999; margin-top: -12px; margin-bottom: 16px; line-height: 1.5; }
+        .setup-hint { font-size: 11px; color: #aaa; margin-bottom: 16px; line-height: 1.5; }
+        .setup-hint a { color: #667eea; text-decoration: none; }
         .setup-btn {
-            width: 100%; padding: 12px;
-            background: #667eea; color: white;
-            border: none; border-radius: 8px;
-            font-size: 14px; font-weight: 600;
-            cursor: pointer; transition: background 0.2s;
+            width: 100%; padding: 12px; background: #667eea; color: white;
+            border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+            cursor: pointer; margin-top: 8px;
         }
         .setup-btn:hover { background: #5568d3; }
-        .setup-divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
-        .setup-step { display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start; }
-        .setup-step-num {
-            width: 22px; height: 22px; border-radius: 50%;
-            background: #667eea; color: white;
-            font-size: 11px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; margin-top: 1px;
+        .setup-divider { border: none; border-top: 1px solid #f0f0f0; margin: 18px 0; }
+        .step { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+        .step-num {
+            width: 20px; height: 20px; border-radius: 50%; background: #667eea;
+            color: white; font-size: 10px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
         }
-        .setup-step p { font-size: 12px; color: #555; margin: 0; line-height: 1.5; }
-        .setup-step a { color: #667eea; text-decoration: none; }
-        .setup-step a:hover { text-decoration: underline; }
-
-        /* ── MAIN APP ── */
+        .step p { font-size: 12px; color: #555; margin: 0; line-height: 1.5; }
         .container {
-            width: 100%;
-            max-width: 1200px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            overflow: hidden;
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            min-height: 700px;
+            width: 100%; max-width: 1220px; background: white;
+            border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            overflow: hidden; display: grid;
+            grid-template-columns: 1fr 320px; min-height: 720px;
         }
-
-        .chat-area {
-            display: flex;
-            flex-direction: column;
-            background: #fafafa;
-        }
-
+        .chat-area { display: flex; flex-direction: column; background: #fafafa; }
         .top-bar {
-            background: white;
-            padding: 12px 16px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: white; padding: 12px 16px;
+            border-bottom: 1px solid #ebebeb;
+            display: flex; justify-content: space-between; align-items: center;
         }
-
         .top-bar-left { display: flex; align-items: center; gap: 10px; }
-        .top-bar h1 { font-size: 16px; color: #1a1a2e; font-weight: 600; }
-        .sync-status {
-            font-size: 11px; padding: 3px 8px;
-            border-radius: 20px; font-weight: 500;
-        }
-        .sync-status.synced { background: #d1fae5; color: #065f46; }
-        .sync-status.syncing { background: #fef3c7; color: #92400e; }
-        .sync-status.error { background: #fee2e2; color: #991b1b; }
-        .sync-status.offline { background: #f3f4f6; color: #6b7280; }
-
+        .top-bar h1 { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+        .sync-badge { font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
+        .sync-badge.synced  { background: #d1fae5; color: #065f46; }
+        .sync-badge.syncing { background: #fef3c7; color: #92400e; }
+        .sync-badge.error   { background: #fee2e2; color: #991b1b; }
+        .sync-badge.offline { background: #f3f4f6; color: #6b7280; }
         .top-bar-right { display: flex; gap: 6px; }
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            color: #555;
-            transition: all 0.15s;
+        .btn-sm {
+            padding: 5px 11px; font-size: 11px; font-weight: 500;
+            border: 1px solid #ddd; background: white; border-radius: 6px;
+            cursor: pointer; color: #555; transition: all 0.15s;
         }
-        .btn-small:hover { background: #f5f5f5; }
-
+        .btn-sm:hover { background: #f5f5f5; }
         .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            flex: 1; overflow-y: auto; padding: 18px 20px;
+            display: flex; flex-direction: column; gap: 10px;
         }
-
-        .message {
-            display: flex;
-            animation: slideIn 0.25s ease-out;
-        }
-
+        .message { display: flex; animation: slideIn 0.22s ease-out; }
         .message.user { justify-content: flex-end; }
-
         .message-content {
-            max-width: 72%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            line-height: 1.55;
-            word-break: break-word;
-            white-space: pre-wrap;
+            max-width: 74%; padding: 11px 15px;
+            border-radius: 12px; font-size: 13.5px;
+            line-height: 1.55; word-break: break-word; white-space: pre-wrap;
         }
-
-        .message.ai .message-content {
-            background: white;
-            color: #1a1a2e;
-            border: 1px solid #e0e0e0;
+        .message.ai .message-content    { background: white; color: #1a1a2e; border: 1px solid #e5e5e5; }
+        .message.user .message-content   { background: #667eea; color: white; }
+        .message.thinking .message-content { background: white; border: 1px dashed #ddd; }
+        @keyframes slideIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        .dots span {
+            display: inline-block; width: 5px; height: 5px;
+            border-radius: 50%; background: #bbb; margin: 0 2px;
+            animation: dot 1.2s infinite;
         }
-
-        .message.user .message-content {
-            background: #667eea;
-            color: white;
-        }
-
-        .message.thinking .message-content {
-            background: white;
-            color: #999;
-            border: 1px dashed #ddd;
-            font-style: italic;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .typing-dots span {
-            display: inline-block;
-            width: 5px; height: 5px;
-            border-radius: 50%;
-            background: #999;
-            margin: 0 2px;
-            animation: bounce 1.2s infinite;
-        }
-        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes bounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-5px); }
-        }
-
-        .input-area {
-            padding: 14px 16px;
-            background: white;
-            border-top: 1px solid #e0e0e0;
-        }
-
-        .input-row {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 7px;
-        }
-
+        .dots span:nth-child(2) { animation-delay: 0.2s; }
+        .dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dot { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+        .input-area { padding: 13px 16px; background: white; border-top: 1px solid #ebebeb; }
+        .input-row { display: flex; gap: 7px; margin-bottom: 6px; }
         .input-field {
-            flex: 1;
-            padding: 10px 14px;
-            border: 1.5px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: inherit;
+            flex: 1; padding: 10px 13px; border: 1.5px solid #ddd;
+            border-radius: 8px; font-size: 13.5px; font-family: inherit;
             transition: border-color 0.2s;
         }
-
         .input-field:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
-
         .btn-icon {
-            padding: 10px 13px;
-            border: 1.5px solid #ddd;
-            border-radius: 8px;
-            background: white;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.15s;
+            padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+            background: white; cursor: pointer; font-size: 15px;
         }
-        .btn-icon:hover { background: #f5f5f5; }
-        .btn-icon.active { background: #ef4444; border-color: #ef4444; color: white; }
-
+        .btn-icon.active { background: #ef4444; border-color: #ef4444; }
         .btn-send {
-            padding: 10px 22px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: background 0.15s;
+            padding: 10px 20px; background: #667eea; color: white;
+            border: none; border-radius: 8px; font-size: 13.5px;
+            font-weight: 600; cursor: pointer;
         }
         .btn-send:hover { background: #5568d3; }
         .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .hint-text { font-size: 11px; color: #aaa; padding: 0 2px; }
-
-        /* ── SIDEBAR ── */
+        .hint { font-size: 11px; color: #bbb; }
         .sidebar {
-            background: #f7f7f7;
-            border-left: 1px solid #e8e8e8;
-            display: flex;
-            flex-direction: column;
+            background: #f7f7f7; border-left: 1px solid #e8e8e8;
+            display: flex; flex-direction: column; overflow: hidden;
         }
-
-        .sidebar-header {
-            padding: 14px 16px 10px;
-            background: white;
+        .sidebar-head {
+            padding: 13px 14px 10px; background: white;
             border-bottom: 1px solid #e8e8e8;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
         }
-
-        .sidebar-title { font-size: 13px; font-weight: 600; color: #1a1a2e; }
-
-        .sidebar-stats {
-            display: flex;
-            gap: 8px;
-            padding: 10px 14px;
-            background: white;
-            border-bottom: 1px solid #e8e8e8;
+        .sidebar-title { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+        .stats-row {
+            display: flex; gap: 6px; padding: 10px 12px;
+            background: white; border-bottom: 1px solid #e8e8e8;
         }
-
-        .stat-chip {
-            flex: 1;
-            text-align: center;
-            padding: 6px 4px;
-            border-radius: 6px;
-            border: 1px solid #eee;
+        .stat {
+            flex: 1; text-align: center; padding: 6px 2px;
+            border-radius: 6px; border: 1px solid #f0f0f0; background: #fafafa;
         }
-        .stat-chip .stat-num { font-size: 16px; font-weight: 700; display: block; }
-        .stat-chip .stat-lbl { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.3px; }
-        .stat-chip.done .stat-num { color: #10b981; }
-        .stat-chip.progress .stat-num { color: #3b82f6; }
-        .stat-chip.blocked .stat-num { color: #ef4444; }
-        .stat-chip.todo .stat-num { color: #9ca3af; }
-
-        .tasks-scroll { flex: 1; overflow-y: auto; padding: 10px 12px; }
-
-        .category-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: #aaa;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin: 12px 0 6px;
+        .stat .n { font-size: 17px; font-weight: 700; display: block; }
+        .stat .l { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.3px; }
+        .stat.done     .n { color: #10b981; }
+        .stat.prog     .n { color: #3b82f6; }
+        .stat.blocked  .n { color: #ef4444; }
+        .stat.todo     .n { color: #9ca3af; }
+        .tasks-scroll { flex: 1; overflow-y: auto; padding: 8px 10px; }
+        .cat-label {
+            font-size: 9px; font-weight: 700; color: #bbb;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            margin: 12px 0 5px; padding: 0 2px;
         }
-        .category-title:first-child { margin-top: 0; }
-
-        .task-item {
-            background: white;
-            padding: 9px 10px;
-            margin-bottom: 6px;
-            border-radius: 8px;
-            border: 1px solid #ebebeb;
-            font-size: 12px;
+        .cat-label:first-child { margin-top: 2px; }
+        .task-card {
+            background: white; padding: 9px 10px; margin-bottom: 5px;
+            border-radius: 7px; border: 1px solid #ebebeb; font-size: 11.5px;
             transition: border-color 0.15s;
         }
-        .task-item:hover { border-color: #d0d0d0; }
-
-        .task-header { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; }
-        .task-name { flex: 1; font-weight: 500; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .task-name.done { text-decoration: line-through; color: #aaa; }
-
-        .status-badge {
-            font-size: 9px; font-weight: 700;
-            padding: 2px 6px; border-radius: 4px;
-            margin-left: 6px; flex-shrink: 0;
-            text-transform: uppercase; letter-spacing: 0.3px;
+        .task-card:hover { border-color: #ccc; }
+        .task-row1 { display: flex; align-items: center; margin-bottom: 4px; }
+        .task-name {
+            flex: 1; font-weight: 600; color: #1a1a2e;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .badge-done { background: #d1fae5; color: #065f46; }
-        .badge-in-progress { background: #dbeafe; color: #1e40af; }
-        .badge-blocked { background: #fee2e2; color: #991b1b; }
-        .badge-to-do { background: #f3f4f6; color: #6b7280; }
-
-        .progress-bar {
-            background: #f0f0f0;
-            height: 3px;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-bottom: 4px;
+        .task-name.done { text-decoration: line-through; color: #bbb; font-weight: 400; }
+        .sbadge {
+            font-size: 8.5px; font-weight: 700; padding: 2px 6px;
+            border-radius: 4px; margin-left: 5px; flex-shrink: 0;
+            text-transform: uppercase; letter-spacing: 0.2px;
         }
-        .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
-        .task-percent { font-size: 10px; color: #bbb; }
-
+        .s-done        { background: #d1fae5; color: #065f46; }
+        .s-in-progress { background: #dbeafe; color: #1e40af; }
+        .s-blocked     { background: #fee2e2; color: #991b1b; }
+        .s-to-do       { background: #f3f4f6; color: #6b7280; }
+        .task-row2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .task-meta { font-size: 10px; color: #bbb; }
+        .priority-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .p-high   { background: #ef4444; }
+        .p-medium { background: #f59e0b; }
+        .p-low    { background: #10b981; }
+        .p-none   { background: #e5e7eb; }
+        .progress-bar { background: #f0f0f0; height: 3px; border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
             .sidebar { display: none; }
@@ -333,367 +192,284 @@
 </head>
 <body>
 
-<!-- SETUP MODAL -->
 <div class="setup-overlay" id="setupOverlay">
     <div class="setup-box">
-        <h2>⚙️ Setup Shaz AI Task Manager</h2>
-        <p>Connect your Anthropic API key and Google Sheets to get started. This is a one-time setup — everything is saved locally.</p>
+        <h2>Setup Shaz AI Task Manager</h2>
+        <p class="subtitle">One-time setup — everything saves locally in your browser.</p>
 
         <label class="setup-label">Anthropic API Key</label>
         <input type="password" class="setup-input" id="setupApiKey" placeholder="sk-ant-api03-..." />
-        <p class="setup-hint">Get yours at <a href="https://console.anthropic.com/keys" target="_blank">console.anthropic.com/keys</a>. Stored locally in your browser only.</p>
+        <p class="setup-hint">Get yours at <a href="https://console.anthropic.com/keys" target="_blank">console.anthropic.com/keys</a></p>
 
         <hr class="setup-divider">
 
-        <label class="setup-label">Google Apps Script URL (for Sheets sync)</label>
+        <label class="setup-label">Google Apps Script URL</label>
         <input type="text" class="setup-input" id="setupSheetUrl" placeholder="https://script.google.com/macros/s/.../exec" />
-        <p class="setup-hint">Leave blank to use offline mode. Follow steps below to set up Sheets:</p>
+        <p class="setup-hint">Connects to your "Shaz Ai Task Manager" spreadsheet. Leave blank for offline mode.</p>
 
-        <div class="setup-step">
-            <div class="setup-step-num">1</div>
-            <p>Open your Google Sheet named <strong>"Shaz AI Task Manager"</strong> (create it if needed). Add columns: <code>id, name, category, status, percent</code> in row 1.</p>
-        </div>
-        <div class="setup-step">
-            <div class="setup-step-num">2</div>
-            <p>In the sheet, go to <strong>Extensions → Apps Script</strong>. Paste the code from the <strong>Comments</strong> section at the bottom of this HTML file.</p>
-        </div>
-        <div class="setup-step">
-            <div class="setup-step-num">3</div>
-            <p>Click <strong>Deploy → New deployment → Web App</strong>. Set "Who has access" to <strong>Anyone</strong>. Copy the web app URL and paste it above.</p>
+        <div style="background:#f8f9ff;border-radius:8px;padding:14px;margin-bottom:16px;">
+            <p style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:10px;">HOW TO GET THE URL</p>
+            <div class="step"><div class="step-num">1</div><p>Google Sheet → <strong>Extensions → Apps Script</strong></p></div>
+            <div class="step"><div class="step-num">2</div><p>Paste the Apps Script code (see comment at the bottom of this HTML file). Save.</p></div>
+            <div class="step"><div class="step-num">3</div><p><strong>Deploy → New deployment → Web App</strong>. Access: <strong>Anyone</strong>. Copy the URL.</p></div>
         </div>
 
-        <button class="setup-btn" onclick="saveSetup()">Save & Start</button>
+        <button class="setup-btn" onclick="saveSetup()">Save &amp; Start</button>
     </div>
 </div>
 
-<!-- MAIN APP -->
 <div class="container">
     <div class="chat-area">
         <div class="top-bar">
             <div class="top-bar-left">
-                <h1>🤖 Shaz AI Task Manager</h1>
-                <span class="sync-status offline" id="syncStatus">Offline</span>
+                <h1>Shaz AI Task Manager</h1>
+                <span class="sync-badge offline" id="syncBadge">Offline</span>
             </div>
             <div class="top-bar-right">
-                <button class="btn-small" onclick="syncNow()">↻ Sync</button>
-                <button class="btn-small" onclick="openSetup()">⚙️ Settings</button>
-                <button class="btn-small" onclick="clearAll()">Clear</button>
+                <button class="btn-sm" onclick="syncNow()">Sync Sheets</button>
+                <button class="btn-sm" onclick="openSetup()">Settings</button>
+                <button class="btn-sm" onclick="clearAll()">Clear</button>
             </div>
         </div>
 
         <div class="messages-container" id="messagesContainer">
             <div class="message ai">
-                <div class="message-content">👋 Hey! I'm your AI task assistant — actually powered by Claude, not keywords.
+                <div class="message-content">Hey Shaz! I know your 4 sheet tabs: Personal Projects, Client Projects, Talents, and Dopermint Projects.
 
-Try telling me things naturally:
-• "mark HR recruitment as done"
-• "add task: review pitch deck"
-• "golden choice is now 90%, still in progress"
-• "what's blocked?"
-• "remove the lavish dine task"
-• "summarize my day"
+Each task has name, status, priority, due date, notes, and % complete — I can update any of these.
 
-I'll understand what you mean and update your tasks (and Google Sheets!) accordingly. 🚀</div>
+Try:
+- "mark HR recruitment done"
+- "trading bot is blocked"
+- "golden choice now 90% in progress"
+- "add task: review pitch deck in client projects, high priority"
+- "what's blocked?" / "summarize my day"
+
+Every change syncs to your Google Sheet automatically.</div>
             </div>
         </div>
 
         <div class="input-area">
             <div class="input-row">
                 <input type="text" id="inputField" class="input-field" placeholder="Talk to me naturally..." autocomplete="off">
-                <button class="btn-icon" id="voiceBtn" onclick="startVoiceInput()" title="Voice input">🎤</button>
+                <button class="btn-icon" id="voiceBtn" onclick="startVoice()">🎤</button>
                 <button class="btn-send" id="sendBtn" onclick="sendMessage()">Send</button>
             </div>
-            <div class="hint-text">💡 Try: "HR recruitment done", "add task: call shazmi", "what's blocked?", "summarize my day"</div>
+            <div class="hint">Try: "HR recruitment done", "add task: call shazmi in personal projects", "what's blocked?"</div>
         </div>
     </div>
 
     <div class="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-title">📊 Tasks</span>
-            <span id="taskCount" style="font-size:11px;color:#999;">0 tasks</span>
+        <div class="sidebar-head">
+            <span class="sidebar-title">Your Tasks</span>
+            <span id="taskCount" style="font-size:10px;color:#bbb;">0 tasks</span>
         </div>
-        <div class="sidebar-stats" id="sidebarStats"></div>
-        <div class="tasks-scroll" id="tasksSidebar"></div>
+        <div class="stats-row" id="statsRow"></div>
+        <div class="tasks-scroll" id="tasksSidebar"><p style="font-size:12px;color:#ccc;text-align:center;padding:20px;">No tasks yet</p></div>
     </div>
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════
-   STATE
-═══════════════════════════════════════════════ */
+const CATEGORIES = ['Personal Projects','Client Projects','Talents','Dopermint Projects'];
+const STATUSES   = ['To Do','In Progress','Done','Blocked'];
+
 let state = {
-    tasks: JSON.parse(localStorage.getItem('shaz_tasks')) || [
-        { id: 1, name: 'Dr. Mani healthcare proposal',     category: 'Client Projects',    status: 'Done',        percent: 100 },
-        { id: 2, name: 'Golden Choice respond.io config',  category: 'Client Projects',    status: 'In Progress', percent: 80  },
-        { id: 3, name: 'HR talent recruitment',            category: 'Talents',            status: 'Blocked',     percent: 20  },
-        { id: 4, name: 'Dopermint DMG.AI documentation',   category: 'Dopermint Projects', status: 'Done',        percent: 100 },
-        { id: 5, name: 'Trading bot framework setup',      category: 'Dopermint Projects', status: 'In Progress', percent: 30  },
-        { id: 6, name: 'Lavish Dine landing page',         category: 'Client Projects',    status: 'Done',        percent: 100 }
+    tasks: JSON.parse(localStorage.getItem('shaz_tasks') || 'null') || [
+        {id:1,name:'Dr. Mani healthcare proposal',    category:'Client Projects',    status:'Done',        priority:'High',   dueDate:'',notes:'',percent:100},
+        {id:2,name:'Golden Choice respond.io config', category:'Client Projects',    status:'In Progress', priority:'High',   dueDate:'',notes:'',percent:80 },
+        {id:3,name:'HR talent recruitment',           category:'Talents',            status:'Blocked',     priority:'Medium', dueDate:'',notes:'',percent:20 },
+        {id:4,name:'Dopermint DMG.AI documentation',  category:'Dopermint Projects', status:'Done',        priority:'Medium', dueDate:'',notes:'',percent:100},
+        {id:5,name:'Trading bot framework setup',     category:'Dopermint Projects', status:'In Progress', priority:'High',   dueDate:'',notes:'',percent:30 },
+        {id:6,name:'Lavish Dine landing page',        category:'Client Projects',    status:'Done',        priority:'Low',    dueDate:'',notes:'',percent:100}
     ],
-    nextId: parseInt(localStorage.getItem('shaz_nextId') || '7'),
-    chatHistory: []
+    nextId: parseInt(localStorage.getItem('shaz_nextId')||'7'),
+    history: []
 };
 
-let config = {
-    apiKey:   localStorage.getItem('shaz_apiKey')   || '',
-    sheetUrl: localStorage.getItem('shaz_sheetUrl') || ''
+let cfg = {
+    apiKey:   localStorage.getItem('shaz_apiKey')  ||'',
+    sheetUrl: localStorage.getItem('shaz_sheetUrl')||''
 };
 
-/* ═══════════════════════════════════════════════
-   SETUP
-═══════════════════════════════════════════════ */
 function openSetup() {
-    document.getElementById('setupApiKey').value   = config.apiKey;
-    document.getElementById('setupSheetUrl').value = config.sheetUrl;
+    document.getElementById('setupApiKey').value   = cfg.apiKey;
+    document.getElementById('setupSheetUrl').value = cfg.sheetUrl;
     document.getElementById('setupOverlay').classList.remove('hidden');
 }
 
 function saveSetup() {
-    const apiKey   = document.getElementById('setupApiKey').value.trim();
-    const sheetUrl = document.getElementById('setupSheetUrl').value.trim();
-    if (!apiKey) { alert('Please enter your Anthropic API key.'); return; }
-    config.apiKey   = apiKey;
-    config.sheetUrl = sheetUrl;
-    localStorage.setItem('shaz_apiKey',   apiKey);
-    localStorage.setItem('shaz_sheetUrl', sheetUrl);
+    const k = document.getElementById('setupApiKey').value.trim();
+    const u = document.getElementById('setupSheetUrl').value.trim();
+    if (!k) { alert('Please enter your Anthropic API key.'); return; }
+    cfg.apiKey = k; cfg.sheetUrl = u;
+    localStorage.setItem('shaz_apiKey', k);
+    localStorage.setItem('shaz_sheetUrl', u);
     document.getElementById('setupOverlay').classList.add('hidden');
-    setSyncStatus(sheetUrl ? 'synced' : 'offline', sheetUrl ? 'Connected' : 'Offline');
-    if (sheetUrl) syncFromSheet();
+    setBadge(u ? 'synced' : 'offline', u ? 'Connected' : 'Offline');
+    if (u) pullFromSheet();
 }
 
-// Show setup on first load if no API key
 window.addEventListener('DOMContentLoaded', () => {
-    if (!config.apiKey) {
-        openSetup();
-    } else {
-        setSyncStatus(config.sheetUrl ? 'synced' : 'offline', config.sheetUrl ? 'Connected' : 'Offline');
-        if (config.sheetUrl) syncFromSheet();
+    if (!cfg.apiKey) { openSetup(); }
+    else {
+        setBadge(cfg.sheetUrl ? 'synced' : 'offline', cfg.sheetUrl ? 'Connected' : 'Offline');
+        if (cfg.sheetUrl) pullFromSheet();
     }
-    updateUI();
+    renderUI();
+    document.getElementById('inputField').addEventListener('keypress', e => { if(e.key==='Enter') sendMessage(); });
 });
 
-/* ═══════════════════════════════════════════════
-   GOOGLE SHEETS SYNC
-═══════════════════════════════════════════════ */
-function setSyncStatus(type, label) {
-    const el = document.getElementById('syncStatus');
-    el.className = 'sync-status ' + type;
+function setBadge(type, label) {
+    const el = document.getElementById('syncBadge');
+    el.className = 'sync-badge ' + type;
     el.textContent = label;
 }
 
-async function syncToSheet() {
-    if (!config.sheetUrl) return;
-    setSyncStatus('syncing', 'Syncing…');
+async function pushToSheet() {
+    if (!cfg.sheetUrl) return;
+    setBadge('syncing','Syncing...');
     try {
-        await fetch(config.sheetUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'sync', tasks: state.tasks })
+        await fetch(cfg.sheetUrl, {
+            method:'POST', mode:'no-cors',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'sync', tasks: state.tasks})
         });
-        setSyncStatus('synced', 'Synced ✓');
-    } catch (e) {
-        setSyncStatus('error', 'Sync failed');
-        console.error('Sheet sync error:', e);
-    }
+        setBadge('synced','Synced');
+    } catch(e) { setBadge('error','Sync failed'); }
 }
 
-async function syncFromSheet() {
-    if (!config.sheetUrl) return;
-    setSyncStatus('syncing', 'Loading…');
+async function pullFromSheet() {
+    if (!cfg.sheetUrl) return;
+    setBadge('syncing','Loading...');
     try {
-        const res = await fetch(config.sheetUrl + '?action=get');
+        const res  = await fetch(cfg.sheetUrl + '?action=get');
         const data = await res.json();
         if (data.tasks && data.tasks.length > 0) {
-            state.tasks = data.tasks.map(t => ({
-                id:       parseInt(t.id) || t.id,
-                name:     t.name,
-                category: t.category || 'General',
-                status:   t.status   || 'To Do',
-                percent:  parseInt(t.percent) || 0
-            }));
-            state.nextId = Math.max(...state.tasks.map(t => t.id)) + 1;
-            saveTasks();
-            updateUI();
+            state.tasks  = data.tasks;
+            state.nextId = Math.max(...state.tasks.map(t => parseInt(t.id)||0)) + 1;
+            saveTasks(); renderUI();
         }
-        setSyncStatus('synced', 'Synced ✓');
-    } catch (e) {
-        setSyncStatus('error', 'Load failed');
-        console.error('Sheet load error:', e);
-    }
+        setBadge('synced','Synced');
+    } catch(e) { setBadge('error','Load failed'); }
 }
 
 function syncNow() {
-    if (!config.sheetUrl) {
-        addMessage('ai', '⚙️ No Google Sheet connected. Click Settings to add your Apps Script URL.');
-        return;
-    }
-    syncFromSheet().then(() => {
-        addMessage('ai', '✅ Synced with Google Sheets! Your tasks are up to date.');
-    });
+    if (!cfg.sheetUrl) { addMsg('ai','No Sheet connected. Click Settings to add your Apps Script URL.'); return; }
+    pullFromSheet().then(() => addMsg('ai','Synced with Google Sheets! Tasks are up to date.'));
 }
 
-/* ═══════════════════════════════════════════════
-   CLAUDE AI BRAIN
-═══════════════════════════════════════════════ */
-async function callClaude(userMessage) {
-    const systemPrompt = `You are a smart task manager assistant for Shaz (Dopermintgroup). You understand natural language perfectly.
+async function callClaude(userMsg) {
+    const system = `You are the AI brain of Shaz's task manager (Dopermintgroup). Understand natural Malay/English.
 
-Current tasks (JSON):
+Sheet tabs: ${CATEGORIES.join(', ')}
+Task fields: id, name, category, status, priority, dueDate, notes, percent
+
+Current tasks:
 ${JSON.stringify(state.tasks, null, 2)}
 
-Your job: interpret the user's message and respond with a JSON object with two fields:
-1. "message" (string): your friendly, concise reply to the user
-2. "actions" (array): list of actions to perform
+Understand intent:
+- "done/finished/complete/siap" => status:"Done", percent:100
+- "remove/delete/buang" => delete
+- "blocked/stuck/tertangguh/waiting" => status:"Blocked"
+- "in progress/working on" => status:"In Progress"
+- "X is Y%" => percent:Y
+- "add/new/tambah task" => create
+- "update X" with NO detail => ask what to change, no actions
+- Priority words: high/medium/low
 
-Understand intent accurately:
-- "complete X" / "finish X" / "mark X done" / "X is done" → status: Done, percent: 100
-- "remove X" / "delete X" → delete the task
-- "block X" / "X is stuck" / "X is blocked" → status: Blocked
-- "X is Y%" → update progress to Y%
-- "add task: X" / "new task X" / "create X" → create new task
-- "update X" with NO details → set message asking WHAT to update, no actions
-- "what's blocked?" / "summarize my day" / "what's next?" → no actions, just a helpful answer
+Respond ONLY with valid JSON (no markdown, no backticks):
+{"message":"friendly reply","actions":[]}
 
 Action types:
-{ "type": "update", "id": <number>, "changes": { "status"?: "Done"|"In Progress"|"Blocked"|"To Do", "percent"?: 0-100, "name"?: string } }
-{ "type": "create", "name": string, "category": "Client Projects"|"Dopermint Projects"|"Talents"|"Personal", "status": "To Do", "percent": 0 }
-{ "type": "delete", "id": <number> }
+{"type":"update","id":<number>,"changes":{"status"?:string,"percent"?:number,"priority"?:string,"dueDate"?:string,"notes"?:string,"name"?:string}}
+{"type":"create","name":string,"category":"Client Projects"|"Personal Projects"|"Talents"|"Dopermint Projects","status":"To Do","priority":"Medium","dueDate":"","notes":"","percent":0}
+{"type":"delete","id":<number>}
 
-Rules:
-- NEVER guess when ambiguous — ask for clarification
-- Match tasks by partial name (case-insensitive)
-- Be concise and friendly in your message
-- Respond ONLY with valid JSON, no markdown fences, no extra text`;
+Match tasks by partial name (case-insensitive). Never guess when ambiguous — ask.`;
 
-    // Build messages with rolling context (last 10 turns)
-    const historyMessages = state.chatHistory.slice(-10).map(m => ({
-        role: m.role,
-        content: m.content
-    }));
-    historyMessages.push({ role: 'user', content: userMessage });
-
+    const msgs = [...state.history.slice(-8), {role:'user',content:userMsg}];
     const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': config.apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json',
+            'x-api-key': cfg.apiKey,
+            'anthropic-version':'2023-06-01',
+            'anthropic-dangerous-direct-browser-access':'true'
         },
-        body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1000,
-            system: systemPrompt,
-            messages: historyMessages
-        })
+        body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:1000, system, messages:msgs})
     });
-
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || `API error ${res.status}`);
-    }
-
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`API error ${res.status}`); }
     const data = await res.json();
-    const raw = data.content?.[0]?.text || '{}';
-
-    try {
-        return JSON.parse(raw.replace(/```json|```/g, '').trim());
-    } catch(e) {
-        return { message: raw, actions: [] };
-    }
+    const raw  = (data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim();
+    try { return JSON.parse(raw); } catch { return {message:raw, actions:[]}; }
 }
 
-/* ═══════════════════════════════════════════════
-   SEND MESSAGE
-═══════════════════════════════════════════════ */
 async function sendMessage() {
-    const input = document.getElementById('inputField');
-    const sendBtn = document.getElementById('sendBtn');
-    const text = input.value.trim();
+    const inp  = document.getElementById('inputField');
+    const btn  = document.getElementById('sendBtn');
+    const text = inp.value.trim();
     if (!text) return;
-
-    if (!config.apiKey) { openSetup(); return; }
-
-    input.value = '';
-    sendBtn.disabled = true;
-
-    addMessage('user', text);
-    state.chatHistory.push({ role: 'user', content: text });
-
-    const thinkingEl = addThinking();
-
+    if (!cfg.apiKey) { openSetup(); return; }
+    inp.value = ''; btn.disabled = true;
+    addMsg('user', text);
+    state.history.push({role:'user',content:text});
+    const thinking = addThinking();
     try {
-        const parsed = await callClaude(text);
-        thinkingEl.remove();
-
-        const actions = parsed.actions || [];
+        const parsed  = await callClaude(text);
+        thinking.remove();
         let changed = false;
-
-        for (const a of actions) {
-            if (a.type === 'update') {
-                const task = state.tasks.find(t => t.id === a.id);
-                if (task) { Object.assign(task, a.changes); changed = true; }
-            } else if (a.type === 'create') {
+        for (const a of (parsed.actions||[])) {
+            if (a.type==='update') {
+                const t = state.tasks.find(t => t.id===a.id);
+                if (t) { Object.assign(t, a.changes); changed=true; }
+            } else if (a.type==='create') {
                 state.tasks.push({
-                    id:       state.nextId++,
-                    name:     a.name,
-                    category: a.category || 'Personal',
-                    status:   a.status   || 'To Do',
-                    percent:  a.percent  || 0
+                    id: state.nextId++,
+                    name:     a.name     ||'New Task',
+                    category: CATEGORIES.includes(a.category) ? a.category : 'Personal Projects',
+                    status:   STATUSES.includes(a.status)     ? a.status   : 'To Do',
+                    priority: a.priority ||'Medium',
+                    dueDate:  a.dueDate  ||'',
+                    notes:    a.notes    ||'',
+                    percent:  a.percent  ||0
                 });
-                changed = true;
-            } else if (a.type === 'delete') {
-                state.tasks = state.tasks.filter(t => t.id !== a.id);
-                changed = true;
+                changed=true;
+            } else if (a.type==='delete') {
+                state.tasks = state.tasks.filter(t => t.id!==a.id);
+                changed=true;
             }
         }
-
-        const reply = parsed.message || 'Done.';
-        addMessage('ai', reply);
-        state.chatHistory.push({ role: 'assistant', content: reply });
-
-        if (changed) {
-            saveTasks();
-            updateUI();
-            if (config.sheetUrl) syncToSheet();
-        }
-
-    } catch (err) {
-        thinkingEl.remove();
-        addMessage('ai', `❌ Error: ${err.message}. Check your API key in Settings.`);
-        console.error(err);
+        const reply = parsed.message||'Done.';
+        addMsg('ai', reply);
+        state.history.push({role:'assistant',content:reply});
+        if (changed) { saveTasks(); renderUI(); if(cfg.sheetUrl) pushToSheet(); }
+    } catch(err) {
+        thinking.remove();
+        addMsg('ai',`Error: ${err.message}\n\nCheck your API key in Settings.`);
     }
-
-    sendBtn.disabled = false;
-    input.focus();
+    btn.disabled=false; inp.focus();
 }
 
-/* ═══════════════════════════════════════════════
-   UI HELPERS
-═══════════════════════════════════════════════ */
-function addMessage(type, content) {
-    const container = document.getElementById('messagesContainer');
-    const el = document.createElement('div');
+function addMsg(type, text) {
+    const box = document.getElementById('messagesContainer');
+    const el  = document.createElement('div');
     el.className = `message ${type}`;
-    el.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
-    container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
+    el.innerHTML = `<div class="message-content">${esc(text)}</div>`;
+    box.appendChild(el); box.scrollTop=box.scrollHeight;
     return el;
 }
 
 function addThinking() {
-    const container = document.getElementById('messagesContainer');
-    const el = document.createElement('div');
-    el.className = 'message thinking';
-    el.innerHTML = `<div class="message-content"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
-    container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
+    const box = document.getElementById('messagesContainer');
+    const el  = document.createElement('div');
+    el.className='message thinking';
+    el.innerHTML=`<div class="message-content"><div class="dots"><span></span><span></span><span></span></div></div>`;
+    box.appendChild(el); box.scrollTop=box.scrollHeight;
     return el;
 }
 
-function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function esc(t) {
+    return t.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
 
 function saveTasks() {
@@ -701,154 +477,133 @@ function saveTasks() {
     localStorage.setItem('shaz_nextId', state.nextId.toString());
 }
 
-function updateUI() {
-    const sidebar  = document.getElementById('tasksSidebar');
-    const stats    = document.getElementById('sidebarStats');
-    const count    = document.getElementById('taskCount');
-
-    count.textContent = state.tasks.length + ' task' + (state.tasks.length !== 1 ? 's' : '');
-
-    // Stats chips
-    const done    = state.tasks.filter(t => t.status === 'Done').length;
-    const prog    = state.tasks.filter(t => t.status === 'In Progress').length;
-    const blocked = state.tasks.filter(t => t.status === 'Blocked').length;
-    const todo    = state.tasks.filter(t => t.status === 'To Do').length;
-
-    stats.innerHTML = `
-        <div class="stat-chip done"><span class="stat-num">${done}</span><span class="stat-lbl">Done</span></div>
-        <div class="stat-chip progress"><span class="stat-num">${prog}</span><span class="stat-lbl">Active</span></div>
-        <div class="stat-chip blocked"><span class="stat-num">${blocked}</span><span class="stat-lbl">Blocked</span></div>
-        <div class="stat-chip todo"><span class="stat-num">${todo}</span><span class="stat-lbl">To Do</span></div>
-    `;
-
-    // Group by category
-    const cats = {};
-    state.tasks.forEach(t => {
-        if (!cats[t.category]) cats[t.category] = [];
-        cats[t.category].push(t);
-    });
-
-    sidebar.innerHTML = '';
-    for (const [cat, tasks] of Object.entries(cats)) {
-        const catEl = document.createElement('div');
-        catEl.className = 'category-title';
-        catEl.textContent = cat;
-        sidebar.appendChild(catEl);
-
-        tasks.forEach(task => {
-            const statusKey = task.status.toLowerCase().replace(' ', '-');
-            const badgeMap  = { 'done': 'badge-done', 'in-progress': 'badge-in-progress', 'blocked': 'badge-blocked', 'to-do': 'badge-to-do' };
-            const fillColor = { 'done': '#10b981', 'in-progress': '#3b82f6', 'blocked': '#ef4444', 'to-do': '#d1d5db' };
-
-            const el = document.createElement('div');
-            el.className = 'task-item';
-            el.innerHTML = `
-                <div class="task-header">
-                    <div class="task-name ${task.status === 'Done' ? 'done' : ''}" title="${task.name}">${task.name}</div>
-                    <div class="status-badge ${badgeMap[statusKey] || 'badge-to-do'}">${task.status}</div>
+function renderUI() {
+    const sidebar = document.getElementById('tasksSidebar');
+    const statsEl = document.getElementById('statsRow');
+    const countEl = document.getElementById('taskCount');
+    countEl.textContent = state.tasks.length + ' task' + (state.tasks.length!==1?'s':'');
+    const done=state.tasks.filter(t=>t.status==='Done').length;
+    const prog=state.tasks.filter(t=>t.status==='In Progress').length;
+    const blk =state.tasks.filter(t=>t.status==='Blocked').length;
+    const todo=state.tasks.filter(t=>t.status==='To Do').length;
+    statsEl.innerHTML=`
+        <div class="stat done">   <span class="n">${done}</span><span class="l">Done</span></div>
+        <div class="stat prog">   <span class="n">${prog}</span><span class="l">Active</span></div>
+        <div class="stat blocked"><span class="n">${blk}</span> <span class="l">Blocked</span></div>
+        <div class="stat todo">   <span class="n">${todo}</span><span class="l">To Do</span></div>`;
+    const bycat = {};
+    CATEGORIES.forEach(c=>bycat[c]=[]);
+    state.tasks.forEach(t=>{ const c=CATEGORIES.includes(t.category)?t.category:'Personal Projects'; bycat[c].push(t); });
+    sidebar.innerHTML='';
+    for (const cat of CATEGORIES) {
+        const tasks=bycat[cat]; if(!tasks.length) continue;
+        const lbl=document.createElement('div'); lbl.className='cat-label'; lbl.textContent=cat;
+        sidebar.appendChild(lbl);
+        tasks.forEach(task=>{
+            const sk=(task.status||'').toLowerCase().replace(/ /g,'-');
+            const pk=(task.priority||'').toLowerCase();
+            const fill={done:'#10b981','in-progress':'#3b82f6',blocked:'#ef4444','to-do':'#d1d5db'}[sk]||'#d1d5db';
+            const el=document.createElement('div'); el.className='task-card';
+            el.innerHTML=`
+                <div class="task-row1">
+                    <div class="task-name${task.status==='Done'?' done':''}" title="${esc(task.name)}">${esc(task.name)}</div>
+                    <span class="sbadge s-${sk}">${task.status}</span>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width:${task.percent}%;background:${fillColor[statusKey]||'#d1d5db'}"></div>
+                <div class="task-row2">
+                    <span class="task-meta">${task.dueDate?'Due: '+task.dueDate:''}</span>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                        <div class="priority-dot p-${pk==='high'?'high':pk==='medium'?'medium':pk==='low'?'low':'none'}"></div>
+                        <span class="task-meta">${task.percent}%</span>
+                    </div>
                 </div>
-                <div class="task-percent">${task.percent}%</div>
-            `;
+                <div class="progress-bar"><div class="progress-fill" style="width:${task.percent}%;background:${fill}"></div></div>`;
             sidebar.appendChild(el);
         });
     }
 }
 
-/* ═══════════════════════════════════════════════
-   VOICE INPUT
-═══════════════════════════════════════════════ */
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-function startVoiceInput() {
-    if (!SpeechRecognition) { alert('Speech recognition not supported in this browser.'); return; }
-    const recognition = new SpeechRecognition();
-    const btn = document.getElementById('voiceBtn');
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.start();
-    btn.classList.add('active');
-
-    recognition.onresult = (e) => {
-        let transcript = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-            transcript += e.results[i][0].transcript;
-        }
-        document.getElementById('inputField').value = transcript;
-        btn.classList.remove('active');
-        sendMessage();
-    };
-    recognition.onerror = recognition.onend = () => btn.classList.remove('active');
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function startVoice() {
+    if (!SR){alert('Speech recognition not supported.');return;}
+    const r=new SR(); const btn=document.getElementById('voiceBtn');
+    r.lang='en-US'; r.interimResults=false; r.start(); btn.classList.add('active');
+    r.onresult=e=>{ let t=''; for(let i=e.resultIndex;i<e.results.length;i++) t+=e.results[i][0].transcript; document.getElementById('inputField').value=t; btn.classList.remove('active'); sendMessage(); };
+    r.onerror=r.onend=()=>btn.classList.remove('active');
 }
 
-/* ═══════════════════════════════════════════════
-   MISC
-═══════════════════════════════════════════════ */
 function clearAll() {
-    if (!confirm('Clear all tasks and chat history?')) return;
-    localStorage.removeItem('shaz_tasks');
-    localStorage.removeItem('shaz_nextId');
+    if(!confirm('Clear all tasks and chat?')) return;
+    ['shaz_tasks','shaz_nextId'].forEach(k=>localStorage.removeItem(k));
     location.reload();
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('inputField').addEventListener('keypress', e => {
-        if (e.key === 'Enter') sendMessage();
-    });
-});
 </script>
 
 <!--
-═══════════════════════════════════════════════════════════════════════
-  GOOGLE APPS SCRIPT CODE
-  Copy this into Extensions → Apps Script in your Google Sheet
-═══════════════════════════════════════════════════════════════════════
+GOOGLE APPS SCRIPT — paste into Extensions > Apps Script in your "Shaz Ai Task Manager" sheet.
+Your tabs: Personal Projects | Client Projects | Talents | Dopermint Projects
+Columns:   A=Checkbox  B=Task Name  C=Status  D=Priority  E=Due Date  F=Added Date  G=Notes  H=% Complete
 
-const SHEET_NAME = 'Tasks';
+=== PASTE FROM HERE ===
+
+const TABS = ['Personal Projects', 'Client Projects', 'Talents', 'Dopermint Projects'];
 
 function doGet(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-  if (!sheet) return jsonResponse({ error: 'Sheet not found' });
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return jsonResponse({ tasks: [] });
-  const headers = data[0].map(h => h.toString().toLowerCase().trim());
-  const tasks = data.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
-  }).filter(t => t.id !== '' && t.id !== undefined);
-  return jsonResponse({ tasks });
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const all = [];
+  let counter = 1;
+  TABS.forEach(tabName => {
+    const sheet = ss.getSheetByName(tabName);
+    if (!sheet) return;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[1]) continue;
+      all.push({
+        id:       counter++,
+        name:     row[1].toString(),
+        category: tabName,
+        status:   row[2] ? row[2].toString() : 'To Do',
+        priority: row[3] ? row[3].toString() : 'Medium',
+        dueDate:  row[4] ? Utilities.formatDate(new Date(row[4]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        notes:    row[6] ? row[6].toString() : '',
+        percent:  parseInt(row[7]) || 0
+      });
+    }
+  });
+  return ContentService.createTextOutput(JSON.stringify({ tasks: all })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    if (body.action === 'sync') {
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-      if (!sheet) return jsonResponse({ error: 'Sheet not found' });
-      sheet.clearContents();
-      const headers = ['id', 'name', 'category', 'status', 'percent'];
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      if (body.tasks && body.tasks.length > 0) {
-        const rows = body.tasks.map(t => [t.id, t.name, t.category, t.status, t.percent]);
-        sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
-      }
-    }
-    return jsonResponse({ success: true });
+    if (body.action !== 'sync' || !body.tasks) return ContentService.createTextOutput(JSON.stringify({ ok: false })).setMimeType(ContentService.MimeType.JSON);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    TABS.forEach(tabName => {
+      const sheet = ss.getSheetByName(tabName);
+      if (!sheet) return;
+      const catTasks = body.tasks.filter(t => t.category === tabName);
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, 8).clearContent();
+      catTasks.forEach((t, i) => {
+        sheet.getRange(i + 2, 1, 1, 8).setValues([[
+          '',           // A: Checkbox
+          t.name,       // B: Task Name
+          t.status,     // C: Status
+          t.priority,   // D: Priority
+          t.dueDate,    // E: Due Date
+          '',           // F: Added Date
+          t.notes,      // G: Notes
+          t.percent     // H: % Complete
+        ]]);
+      });
+    });
+    return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
-    return jsonResponse({ error: err.message });
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-function jsonResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-═══════════════════════════════════════════════════════════════════════
+=== PASTE UNTIL HERE ===
 -->
 </body>
 </html>
