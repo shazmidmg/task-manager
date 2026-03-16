@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Task Manager - Dopermintgroup</title>
+    <title>Shaz AI Task Manager</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -21,12 +17,63 @@
             padding: 20px;
         }
 
+        /* ── SETUP MODAL ── */
+        .setup-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .setup-overlay.hidden { display: none; }
+        .setup-box {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+        }
+        .setup-box h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 6px; }
+        .setup-box p { font-size: 13px; color: #666; margin-bottom: 24px; line-height: 1.6; }
+        .setup-label { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px; display: block; }
+        .setup-input {
+            width: 100%; padding: 10px 12px;
+            border: 1.5px solid #ddd; border-radius: 8px;
+            font-size: 13px; font-family: inherit;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .setup-input:focus { outline: none; border-color: #667eea; }
+        .setup-hint { font-size: 11px; color: #999; margin-top: -12px; margin-bottom: 16px; line-height: 1.5; }
+        .setup-btn {
+            width: 100%; padding: 12px;
+            background: #667eea; color: white;
+            border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .setup-btn:hover { background: #5568d3; }
+        .setup-divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+        .setup-step { display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start; }
+        .setup-step-num {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #667eea; color: white;
+            font-size: 11px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; margin-top: 1px;
+        }
+        .setup-step p { font-size: 12px; color: #555; margin: 0; line-height: 1.5; }
+        .setup-step a { color: #667eea; text-decoration: none; }
+        .setup-step a:hover { text-decoration: underline; }
+
+        /* ── MAIN APP ── */
         .container {
             width: 100%;
             max-width: 1200px;
             background: white;
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
             overflow: hidden;
             display: grid;
             grid-template-columns: 1fr 300px;
@@ -39,6 +86,39 @@
             background: #fafafa;
         }
 
+        .top-bar {
+            background: white;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar-left { display: flex; align-items: center; gap: 10px; }
+        .top-bar h1 { font-size: 16px; color: #1a1a2e; font-weight: 600; }
+        .sync-status {
+            font-size: 11px; padding: 3px 8px;
+            border-radius: 20px; font-weight: 500;
+        }
+        .sync-status.synced { background: #d1fae5; color: #065f46; }
+        .sync-status.syncing { background: #fef3c7; color: #92400e; }
+        .sync-status.error { background: #fee2e2; color: #991b1b; }
+        .sync-status.offline { background: #f3f4f6; color: #6b7280; }
+
+        .top-bar-right { display: flex; gap: 6px; }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #555;
+            transition: all 0.15s;
+        }
+        .btn-small:hover { background: #f5f5f5; }
+
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -50,26 +130,24 @@
 
         .message {
             display: flex;
-            animation: slideIn 0.3s ease-out;
+            animation: slideIn 0.25s ease-out;
         }
 
-        .message.user {
-            justify-content: flex-end;
-        }
+        .message.user { justify-content: flex-end; }
 
         .message-content {
-            max-width: 70%;
+            max-width: 72%;
             padding: 12px 16px;
             border-radius: 12px;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.55;
             word-break: break-word;
             white-space: pre-wrap;
         }
 
         .message.ai .message-content {
             background: white;
-            color: #333;
+            color: #1a1a2e;
             border: 1px solid #e0e0e0;
         }
 
@@ -78,505 +156,699 @@
             color: white;
         }
 
+        .message.thinking .message-content {
+            background: white;
+            color: #999;
+            border: 1px dashed #ddd;
+            font-style: italic;
+        }
+
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .typing-dots span {
+            display: inline-block;
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: #999;
+            margin: 0 2px;
+            animation: bounce 1.2s infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
         }
 
         .input-area {
-            padding: 16px;
+            padding: 14px 16px;
             background: white;
             border-top: 1px solid #e0e0e0;
-            position: sticky;
-            bottom: 0;
-            z-index: 100;
         }
 
         .input-row {
             display: flex;
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 7px;
         }
 
         .input-field {
             flex: 1;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 10px 14px;
+            border: 1.5px solid #ddd;
+            border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
+            transition: border-color 0.2s;
         }
 
-        .input-field:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+        .input-field:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
 
         .btn-icon {
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 10px 13px;
+            border: 1.5px solid #ddd;
+            border-radius: 8px;
             background: white;
             cursor: pointer;
             font-size: 16px;
-            transition: all 0.2s;
+            transition: all 0.15s;
         }
-
-        .btn-icon:hover {
-            background: #f0f0f0;
-        }
-
-        .btn-icon.active {
-            background: #ef4444;
-            border-color: #ef4444;
-            color: white;
-        }
+        .btn-icon:hover { background: #f5f5f5; }
+        .btn-icon.active { background: #ef4444; border-color: #ef4444; color: white; }
 
         .btn-send {
-            padding: 10px 20px;
+            padding: 10px 22px;
             background: #667eea;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .btn-send:hover {
-            background: #5568d3;
-        }
-
-        .hint-text {
-            font-size: 12px;
-            color: #999;
-            padding: 0 4px;
-        }
-
-        .sidebar {
-            background: #f5f5f5;
-            padding: 16px;
-            border-left: 1px solid #e0e0e0;
-            overflow-y: auto;
-        }
-
-        .sidebar-title {
+            font-weight: 600;
             font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #333;
+            transition: background 0.15s;
         }
+        .btn-send:hover { background: #5568d3; }
+        .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .category-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            margin-top: 12px;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
+        .hint-text { font-size: 11px; color: #aaa; padding: 0 2px; }
 
-        .task-item {
-            background: white;
-            padding: 8px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            border: 1px solid #e0e0e0;
-            font-size: 12px;
-        }
-
-        .task-header {
+        /* ── SIDEBAR ── */
+        .sidebar {
+            background: #f7f7f7;
+            border-left: 1px solid #e8e8e8;
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-            font-weight: 500;
+            flex-direction: column;
         }
 
-        .task-name {
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .task-status {
-            font-weight: 600;
-            font-size: 10px;
-            margin-left: 4px;
-        }
-
-        .status-done { color: #10b981; }
-        .status-progress { color: #3b82f6; }
-        .status-blocked { color: #ef4444; }
-        .status-todo { color: #9ca3af; }
-
-        .progress-bar {
-            background: #e5e7eb;
-            height: 3px;
-            border-radius: 1.5px;
-            overflow: hidden;
-            margin-bottom: 4px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            transition: width 0.3s ease;
-            background: #667eea;
-        }
-
-        .task-percent {
-            font-size: 10px;
-            color: #999;
-        }
-
-        .top-bar {
+        .sidebar-header {
+            padding: 14px 16px 10px;
             background: white;
-            padding: 12px 16px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e8e8e8;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .top-bar h1 {
-            font-size: 18px;
-            color: #333;
-        }
+        .sidebar-title { font-size: 13px; font-weight: 600; color: #1a1a2e; }
 
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
-            border: 1px solid #ddd;
+        .sidebar-stats {
+            display: flex;
+            gap: 8px;
+            padding: 10px 14px;
             background: white;
-            border-radius: 4px;
-            cursor: pointer;
+            border-bottom: 1px solid #e8e8e8;
         }
 
-        .btn-small:hover {
-            background: #f0f0f0;
+        .stat-chip {
+            flex: 1;
+            text-align: center;
+            padding: 6px 4px;
+            border-radius: 6px;
+            border: 1px solid #eee;
         }
+        .stat-chip .stat-num { font-size: 16px; font-weight: 700; display: block; }
+        .stat-chip .stat-lbl { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.3px; }
+        .stat-chip.done .stat-num { color: #10b981; }
+        .stat-chip.progress .stat-num { color: #3b82f6; }
+        .stat-chip.blocked .stat-num { color: #ef4444; }
+        .stat-chip.todo .stat-num { color: #9ca3af; }
+
+        .tasks-scroll { flex: 1; overflow-y: auto; padding: 10px 12px; }
+
+        .category-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 12px 0 6px;
+        }
+        .category-title:first-child { margin-top: 0; }
+
+        .task-item {
+            background: white;
+            padding: 9px 10px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            border: 1px solid #ebebeb;
+            font-size: 12px;
+            transition: border-color 0.15s;
+        }
+        .task-item:hover { border-color: #d0d0d0; }
+
+        .task-header { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; }
+        .task-name { flex: 1; font-weight: 500; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-name.done { text-decoration: line-through; color: #aaa; }
+
+        .status-badge {
+            font-size: 9px; font-weight: 700;
+            padding: 2px 6px; border-radius: 4px;
+            margin-left: 6px; flex-shrink: 0;
+            text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .badge-done { background: #d1fae5; color: #065f46; }
+        .badge-in-progress { background: #dbeafe; color: #1e40af; }
+        .badge-blocked { background: #fee2e2; color: #991b1b; }
+        .badge-to-do { background: #f3f4f6; color: #6b7280; }
+
+        .progress-bar {
+            background: #f0f0f0;
+            height: 3px;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+        .task-percent { font-size: 10px; color: #bbb; }
 
         @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                display: none;
-            }
-
-            .message-content {
-                max-width: 90%;
-            }
+            .container { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .message-content { max-width: 90%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="chat-area">
-            <div class="top-bar">
-                <h1>🤖 AI Task Manager</h1>
-                <button class="btn-small" onclick="clearAll()">Clear All</button>
+
+<!-- SETUP MODAL -->
+<div class="setup-overlay" id="setupOverlay">
+    <div class="setup-box">
+        <h2>⚙️ Setup Shaz AI Task Manager</h2>
+        <p>Connect your Anthropic API key and Google Sheets to get started. This is a one-time setup — everything is saved locally.</p>
+
+        <label class="setup-label">Anthropic API Key</label>
+        <input type="password" class="setup-input" id="setupApiKey" placeholder="sk-ant-api03-..." />
+        <p class="setup-hint">Get yours at <a href="https://console.anthropic.com/keys" target="_blank">console.anthropic.com/keys</a>. Stored locally in your browser only.</p>
+
+        <hr class="setup-divider">
+
+        <label class="setup-label">Google Apps Script URL (for Sheets sync)</label>
+        <input type="text" class="setup-input" id="setupSheetUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+        <p class="setup-hint">Leave blank to use offline mode. Follow steps below to set up Sheets:</p>
+
+        <div class="setup-step">
+            <div class="setup-step-num">1</div>
+            <p>Open your Google Sheet named <strong>"Shaz AI Task Manager"</strong> (create it if needed). Add columns: <code>id, name, category, status, percent</code> in row 1.</p>
+        </div>
+        <div class="setup-step">
+            <div class="setup-step-num">2</div>
+            <p>In the sheet, go to <strong>Extensions → Apps Script</strong>. Paste the code from the <strong>Comments</strong> section at the bottom of this HTML file.</p>
+        </div>
+        <div class="setup-step">
+            <div class="setup-step-num">3</div>
+            <p>Click <strong>Deploy → New deployment → Web App</strong>. Set "Who has access" to <strong>Anyone</strong>. Copy the web app URL and paste it above.</p>
+        </div>
+
+        <button class="setup-btn" onclick="saveSetup()">Save & Start</button>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="container">
+    <div class="chat-area">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <h1>🤖 Shaz AI Task Manager</h1>
+                <span class="sync-status offline" id="syncStatus">Offline</span>
             </div>
-
-            <div class="messages-container" id="messagesContainer">
-                <div class="message ai">
-                    <div class="message-content">👋 Hey! I'm your personal AI task assistant. I understand natural language, so tell me anything:
-
-📝 Update tasks: "Finished proposal v10", "Golden Choice 80%", "Trading bot blocked"
-➕ Create tasks: "Add task: Call Shazmi personal", "New: Review deck"
-❓ Ask me: "What should I do next?", "Show blocked tasks", "What's urgent?"
-🔄 Manage: "Delete completed", "Summarize my day"
-
-Just type naturally! 🚀</div>
-                </div>
-            </div>
-
-            <div class="input-area">
-                <div class="input-row">
-                    <input type="text" id="inputField" class="input-field" placeholder="Talk to me naturally...">
-                    <button class="btn-icon" id="voiceBtn" onclick="startVoiceInput()" title="Click to speak">🎤</button>
-                    <button class="btn-send" onclick="sendMessage()">Send</button>
-                </div>
-                <div class="hint-text">💡 Try: "finished proposal", "add task: call shazmi", "what's blocked?", "what should I do next?"</div>
+            <div class="top-bar-right">
+                <button class="btn-small" onclick="syncNow()">↻ Sync</button>
+                <button class="btn-small" onclick="openSetup()">⚙️ Settings</button>
+                <button class="btn-small" onclick="clearAll()">Clear</button>
             </div>
         </div>
 
-        <div class="sidebar">
-            <div class="sidebar-title">📊 Your Tasks</div>
-            <div id="tasksSidebar"></div>
+        <div class="messages-container" id="messagesContainer">
+            <div class="message ai">
+                <div class="message-content">👋 Hey! I'm your AI task assistant — actually powered by Claude, not keywords.
+
+Try telling me things naturally:
+• "mark HR recruitment as done"
+• "add task: review pitch deck"
+• "golden choice is now 90%, still in progress"
+• "what's blocked?"
+• "remove the lavish dine task"
+• "summarize my day"
+
+I'll understand what you mean and update your tasks (and Google Sheets!) accordingly. 🚀</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-row">
+                <input type="text" id="inputField" class="input-field" placeholder="Talk to me naturally..." autocomplete="off">
+                <button class="btn-icon" id="voiceBtn" onclick="startVoiceInput()" title="Voice input">🎤</button>
+                <button class="btn-send" id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+            <div class="hint-text">💡 Try: "HR recruitment done", "add task: call shazmi", "what's blocked?", "summarize my day"</div>
         </div>
     </div>
 
-    <script>
-        let state = {
-            tasks: JSON.parse(localStorage.getItem('tasks')) || [
-                { id: 1, name: 'Dr. Mani healthcare proposal', category: 'Client Projects', status: 'Done', percent: 100 },
-                { id: 2, name: 'Golden Choice respond.io config', category: 'Client Projects', status: 'In Progress', percent: 80 },
-                { id: 3, name: 'HR talent recruitment', category: 'Talents', status: 'Blocked', percent: 20 },
-                { id: 4, name: 'Dopermint DMG.AI documentation', category: 'Dopermint Projects', status: 'Done', percent: 100 },
-                { id: 5, name: 'Trading bot framework setup', category: 'Dopermint Projects', status: 'In Progress', percent: 30 },
-                { id: 6, name: 'Lavish Dine landing page', category: 'Client Projects', status: 'Done', percent: 100 }
-            ],
-            messages: JSON.parse(localStorage.getItem('messages')) || [],
-            nextTaskId: 7
-        };
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">📊 Tasks</span>
+            <span id="taskCount" style="font-size:11px;color:#999;">0 tasks</span>
+        </div>
+        <div class="sidebar-stats" id="sidebarStats"></div>
+        <div class="tasks-scroll" id="tasksSidebar"></div>
+    </div>
+</div>
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+<script>
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let state = {
+    tasks: JSON.parse(localStorage.getItem('shaz_tasks')) || [
+        { id: 1, name: 'Dr. Mani healthcare proposal',     category: 'Client Projects',    status: 'Done',        percent: 100 },
+        { id: 2, name: 'Golden Choice respond.io config',  category: 'Client Projects',    status: 'In Progress', percent: 80  },
+        { id: 3, name: 'HR talent recruitment',            category: 'Talents',            status: 'Blocked',     percent: 20  },
+        { id: 4, name: 'Dopermint DMG.AI documentation',   category: 'Dopermint Projects', status: 'Done',        percent: 100 },
+        { id: 5, name: 'Trading bot framework setup',      category: 'Dopermint Projects', status: 'In Progress', percent: 30  },
+        { id: 6, name: 'Lavish Dine landing page',         category: 'Client Projects',    status: 'Done',        percent: 100 }
+    ],
+    nextId: parseInt(localStorage.getItem('shaz_nextId') || '7'),
+    chatHistory: []
+};
 
-        function startVoiceInput() {
-            if (!SpeechRecognition) {
-                alert('Speech recognition not supported');
-                return;
-            }
+let config = {
+    apiKey:   localStorage.getItem('shaz_apiKey')   || '',
+    sheetUrl: localStorage.getItem('shaz_sheetUrl') || ''
+};
 
-            const recognition = new SpeechRecognition();
-            recognition.start();
-            document.getElementById('voiceBtn').classList.add('active');
+/* ═══════════════════════════════════════════════
+   SETUP
+═══════════════════════════════════════════════ */
+function openSetup() {
+    document.getElementById('setupApiKey').value   = config.apiKey;
+    document.getElementById('setupSheetUrl').value = config.sheetUrl;
+    document.getElementById('setupOverlay').classList.remove('hidden');
+}
 
-            recognition.onresult = (event) => {
-                let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    transcript += event.results[i][0].transcript;
-                }
-                document.getElementById('inputField').value = transcript;
-            };
+function saveSetup() {
+    const apiKey   = document.getElementById('setupApiKey').value.trim();
+    const sheetUrl = document.getElementById('setupSheetUrl').value.trim();
+    if (!apiKey) { alert('Please enter your Anthropic API key.'); return; }
+    config.apiKey   = apiKey;
+    config.sheetUrl = sheetUrl;
+    localStorage.setItem('shaz_apiKey',   apiKey);
+    localStorage.setItem('shaz_sheetUrl', sheetUrl);
+    document.getElementById('setupOverlay').classList.add('hidden');
+    setSyncStatus(sheetUrl ? 'synced' : 'offline', sheetUrl ? 'Connected' : 'Offline');
+    if (sheetUrl) syncFromSheet();
+}
 
-            recognition.onend = () => {
-                document.getElementById('voiceBtn').classList.remove('active');
-            };
-        }
+// Show setup on first load if no API key
+window.addEventListener('DOMContentLoaded', () => {
+    if (!config.apiKey) {
+        openSetup();
+    } else {
+        setSyncStatus(config.sheetUrl ? 'synced' : 'offline', config.sheetUrl ? 'Connected' : 'Offline');
+        if (config.sheetUrl) syncFromSheet();
+    }
+    updateUI();
+});
 
-        function parseUserInput(text) {
-            const lower = text.toLowerCase();
-            const result = {
-                action: 'query',
-                taskUpdates: [],
-                newTasks: [],
-                response: ''
-            };
+/* ═══════════════════════════════════════════════
+   GOOGLE SHEETS SYNC
+═══════════════════════════════════════════════ */
+function setSyncStatus(type, label) {
+    const el = document.getElementById('syncStatus');
+    el.className = 'sync-status ' + type;
+    el.textContent = label;
+}
 
-            // Task creation
-            if (lower.includes('add task') || lower.includes('new task') || (lower.includes('create') && !lower.includes('what'))) {
-                const match = text.match(/(?:add|new|create)\s+(?:task:?\s+)?(.+?)(?:\.|$)/i);
-                if (match) {
-                    const taskName = match[1].trim();
-                    result.newTasks.push({
-                        name: taskName,
-                        category: 'Personal Projects',
-                        status: 'To Do',
-                        percent: 0
-                    });
-                    result.response = `✓ Created task: "${taskName}"`;
-                    return result;
-                }
-            }
+async function syncToSheet() {
+    if (!config.sheetUrl) return;
+    setSyncStatus('syncing', 'Syncing…');
+    try {
+        await fetch(config.sheetUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'sync', tasks: state.tasks })
+        });
+        setSyncStatus('synced', 'Synced ✓');
+    } catch (e) {
+        setSyncStatus('error', 'Sync failed');
+        console.error('Sheet sync error:', e);
+    }
+}
 
-            // Task updates
-            let detectedUpdates = [];
-            const keywords = {
-                'proposal': 'Dr. Mani healthcare proposal',
-                'golden choice': 'Golden Choice respond.io config',
-                'dopermint': 'Dopermint DMG.AI documentation',
-                'talent': 'HR talent recruitment',
-                'trading': 'Trading bot framework setup',
-                'lavish': 'Lavish Dine landing page'
-            };
-
-            let status = null;
-            let percent = null;
-
-            // Detect status
-            if (lower.includes('done') || lower.includes('finished') || lower.includes('completed')) {
-                status = 'Done';
-                percent = 100;
-            } else if (lower.includes('working') || lower.includes('in progress') || lower.includes('started')) {
-                status = 'In Progress';
-                percent = 50;
-            } else if (lower.includes('blocked') || lower.includes('stuck') || lower.includes('waiting')) {
-                status = 'Blocked';
-                percent = 0;
-            }
-
-            // Detect percentage
-            const percentMatch = text.match(/(\d+)\s*%/);
-            if (percentMatch) {
-                percent = parseInt(percentMatch[1]);
-            }
-
-            // Find matching tasks
-            for (const [keyword, taskName] of Object.entries(keywords)) {
-                if (lower.includes(keyword)) {
-                    const task = state.tasks.find(t => t.name.toLowerCase().includes(keyword));
-                    if (task) {
-                        detectedUpdates.push({
-                            id: task.id,
-                            status: status || task.status,
-                            percent: percent !== null ? percent : task.percent
-                        });
-                    }
-                }
-            }
-
-            // Apply updates
-            if (detectedUpdates.length > 0) {
-                detectedUpdates.forEach(update => {
-                    const task = state.tasks.find(t => t.id === update.id);
-                    if (task) {
-                        task.status = update.status;
-                        task.percent = update.percent;
-                    }
-                });
-
-                result.action = 'update';
-                result.response = `✓ Updated ${detectedUpdates.length} task${detectedUpdates.length > 1 ? 's' : ''}!\n\n`;
-                detectedUpdates.forEach(u => {
-                    const task = state.tasks.find(t => t.id === u.id);
-                    result.response += `• ${task.name}: ${u.status} (${u.percent}%)\n`;
-                });
-                return result;
-            }
-
-            // Queries
-            if (lower.includes('what') && (lower.includes('next') || lower.includes('should'))) {
-                const inProgress = state.tasks.filter(t => t.status === 'In Progress');
-                const todo = state.tasks.filter(t => t.status === 'To Do');
-                result.response = '📋 Here\'s what I recommend:\n\n';
-                if (inProgress.length > 0) {
-                    result.response += `🔴 FINISH THESE:\n${inProgress.map(t => `• ${t.name} (${t.percent}%)`).join('\n')}\n\n`;
-                }
-                if (todo.length > 0) {
-                    result.response += `🟢 START NEXT:\n${todo.map(t => `• ${t.name}`).join('\n')}\n`;
-                }
-            } else if (lower.includes('blocked') || lower.includes('stuck')) {
-                const blocked = state.tasks.filter(t => t.status === 'Blocked');
-                result.response = blocked.length > 0 
-                    ? `🚨 BLOCKED TASKS:\n${blocked.map(t => `• ${t.name}`).join('\n')}`
-                    : `✅ No blocked tasks!`;
-            } else if (lower.includes('summarize') || lower.includes('summary') || lower.includes('day')) {
-                const done = state.tasks.filter(t => t.status === 'Done').length;
-                const inProgress = state.tasks.filter(t => t.status === 'In Progress').length;
-                const blocked = state.tasks.filter(t => t.status === 'Blocked').length;
-                const completion = Math.round((done / state.tasks.length) * 100);
-                result.response = `📊 YOUR SUMMARY\n\n✅ Done: ${done}\n⏳ In Progress: ${inProgress}\n🚨 Blocked: ${blocked}\n\n📈 Completion: ${completion}%\n\nGreat work! 🚀`;
-            } else if (lower.includes('urgent') || lower.includes('priority')) {
-                const urgent = state.tasks.filter(t => t.status !== 'Done').slice(0, 3);
-                result.response = `⚡ TOP PRIORITIES:\n${urgent.map(t => `• ${t.name}`).join('\n')}`;
-            } else if (lower.includes('delete') && lower.includes('completed')) {
-                const beforeCount = state.tasks.length;
-                state.tasks = state.tasks.filter(t => t.status !== 'Done');
-                result.response = `🗑️ Deleted ${beforeCount - state.tasks.length} completed task${beforeCount - state.tasks.length !== 1 ? 's' : ''}`;
-            } else {
-                result.response = `Got it! You can:\n• Update tasks: "finished proposal", "golden choice 80%"\n• Create: "add task: call shazmi"\n• Ask: "what's blocked?", "what's next?"\n• Summarize: "summary my day"`;
-            }
-
-            return result;
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('inputField').value.trim();
-            if (!input) return;
-
-            state.messages.push({ type: 'user', content: input });
-            addMessageToUI('user', input);
-            document.getElementById('inputField').value = '';
-
-            const parsed = parseUserInput(input);
-            
-            if (parsed.newTasks.length > 0) {
-                parsed.newTasks.forEach(newTask => {
-                    state.tasks.push({
-                        id: state.nextTaskId++,
-                        ...newTask
-                    });
-                });
-            }
-
-            state.messages.push({ type: 'ai', content: parsed.response });
-            addMessageToUI('ai', parsed.response);
-
-            localStorage.setItem('tasks', JSON.stringify(state.tasks));
-            localStorage.setItem('messages', JSON.stringify(state.messages));
-
+async function syncFromSheet() {
+    if (!config.sheetUrl) return;
+    setSyncStatus('syncing', 'Loading…');
+    try {
+        const res = await fetch(config.sheetUrl + '?action=get');
+        const data = await res.json();
+        if (data.tasks && data.tasks.length > 0) {
+            state.tasks = data.tasks.map(t => ({
+                id:       parseInt(t.id) || t.id,
+                name:     t.name,
+                category: t.category || 'General',
+                status:   t.status   || 'To Do',
+                percent:  parseInt(t.percent) || 0
+            }));
+            state.nextId = Math.max(...state.tasks.map(t => t.id)) + 1;
+            saveTasks();
             updateUI();
         }
+        setSyncStatus('synced', 'Synced ✓');
+    } catch (e) {
+        setSyncStatus('error', 'Load failed');
+        console.error('Sheet load error:', e);
+    }
+}
 
-        function addMessageToUI(type, content) {
-            const container = document.getElementById('messagesContainer');
-            const messageEl = document.createElement('div');
-            messageEl.className = `message ${type}`;
-            messageEl.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
-            container.appendChild(messageEl);
-            container.scrollTop = container.scrollHeight;
-        }
+function syncNow() {
+    if (!config.sheetUrl) {
+        addMessage('ai', '⚙️ No Google Sheet connected. Click Settings to add your Apps Script URL.');
+        return;
+    }
+    syncFromSheet().then(() => {
+        addMessage('ai', '✅ Synced with Google Sheets! Your tasks are up to date.');
+    });
+}
 
-        function escapeHtml(text) {
-            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
+/* ═══════════════════════════════════════════════
+   CLAUDE AI BRAIN
+═══════════════════════════════════════════════ */
+async function callClaude(userMessage) {
+    const systemPrompt = `You are a smart task manager assistant for Shaz (Dopermintgroup). You understand natural language perfectly.
 
-        function updateUI() {
-            const sidebar = document.getElementById('tasksSidebar');
-            const categories = {};
+Current tasks (JSON):
+${JSON.stringify(state.tasks, null, 2)}
 
-            state.tasks.forEach(task => {
-                if (!categories[task.category]) categories[task.category] = [];
-                categories[task.category].push(task);
-            });
+Your job: interpret the user's message and respond with a JSON object with two fields:
+1. "message" (string): your friendly, concise reply to the user
+2. "actions" (array): list of actions to perform
 
-            sidebar.innerHTML = '';
-            for (const [category, tasks] of Object.entries(categories)) {
-                const categoryEl = document.createElement('div');
-                categoryEl.className = 'category-title';
-                categoryEl.textContent = category.split(' ')[0];
-                sidebar.appendChild(categoryEl);
+Understand intent accurately:
+- "complete X" / "finish X" / "mark X done" / "X is done" → status: Done, percent: 100
+- "remove X" / "delete X" → delete the task
+- "block X" / "X is stuck" / "X is blocked" → status: Blocked
+- "X is Y%" → update progress to Y%
+- "add task: X" / "new task X" / "create X" → create new task
+- "update X" with NO details → set message asking WHAT to update, no actions
+- "what's blocked?" / "summarize my day" / "what's next?" → no actions, just a helpful answer
 
-                tasks.forEach(task => {
-                    const taskEl = document.createElement('div');
-                    taskEl.className = 'task-item';
-                    const statusClass = `status-${task.status.toLowerCase().replace(' ', '-')}`;
-                    const statusColor = getStatusColor(task.status);
-                    
-                    taskEl.innerHTML = `
-                        <div class="task-header">
-                            <div class="task-name" title="${task.name}">${task.name}</div>
-                            <div class="task-status ${statusClass}">●</div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${task.percent}%; background: ${statusColor}"></div>
-                        </div>
-                        <div class="task-percent">${task.percent}% complete</div>
-                    `;
-                    sidebar.appendChild(taskEl);
+Action types:
+{ "type": "update", "id": <number>, "changes": { "status"?: "Done"|"In Progress"|"Blocked"|"To Do", "percent"?: 0-100, "name"?: string } }
+{ "type": "create", "name": string, "category": "Client Projects"|"Dopermint Projects"|"Talents"|"Personal", "status": "To Do", "percent": 0 }
+{ "type": "delete", "id": <number> }
+
+Rules:
+- NEVER guess when ambiguous — ask for clarification
+- Match tasks by partial name (case-insensitive)
+- Be concise and friendly in your message
+- Respond ONLY with valid JSON, no markdown fences, no extra text`;
+
+    // Build messages with rolling context (last 10 turns)
+    const historyMessages = state.chatHistory.slice(-10).map(m => ({
+        role: m.role,
+        content: m.content
+    }));
+    historyMessages.push({ role: 'user', content: userMessage });
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': config.apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            system: systemPrompt,
+            messages: historyMessages
+        })
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || '{}';
+
+    try {
+        return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch(e) {
+        return { message: raw, actions: [] };
+    }
+}
+
+/* ═══════════════════════════════════════════════
+   SEND MESSAGE
+═══════════════════════════════════════════════ */
+async function sendMessage() {
+    const input = document.getElementById('inputField');
+    const sendBtn = document.getElementById('sendBtn');
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (!config.apiKey) { openSetup(); return; }
+
+    input.value = '';
+    sendBtn.disabled = true;
+
+    addMessage('user', text);
+    state.chatHistory.push({ role: 'user', content: text });
+
+    const thinkingEl = addThinking();
+
+    try {
+        const parsed = await callClaude(text);
+        thinkingEl.remove();
+
+        const actions = parsed.actions || [];
+        let changed = false;
+
+        for (const a of actions) {
+            if (a.type === 'update') {
+                const task = state.tasks.find(t => t.id === a.id);
+                if (task) { Object.assign(task, a.changes); changed = true; }
+            } else if (a.type === 'create') {
+                state.tasks.push({
+                    id:       state.nextId++,
+                    name:     a.name,
+                    category: a.category || 'Personal',
+                    status:   a.status   || 'To Do',
+                    percent:  a.percent  || 0
                 });
+                changed = true;
+            } else if (a.type === 'delete') {
+                state.tasks = state.tasks.filter(t => t.id !== a.id);
+                changed = true;
             }
         }
 
-        function getStatusColor(status) {
-            const colors = {'Done': '#10b981', 'In Progress': '#3b82f6', 'Blocked': '#ef4444', 'To Do': '#9ca3af'};
-            return colors[status] || '#9ca3af';
+        const reply = parsed.message || 'Done.';
+        addMessage('ai', reply);
+        state.chatHistory.push({ role: 'assistant', content: reply });
+
+        if (changed) {
+            saveTasks();
+            updateUI();
+            if (config.sheetUrl) syncToSheet();
         }
 
-        function clearAll() {
-            if (confirm('Clear all tasks and messages?')) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
+    } catch (err) {
+        thinkingEl.remove();
+        addMessage('ai', `❌ Error: ${err.message}. Check your API key in Settings.`);
+        console.error(err);
+    }
 
-        document.getElementById('inputField').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+    sendBtn.disabled = false;
+    input.focus();
+}
+
+/* ═══════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════ */
+function addMessage(type, content) {
+    const container = document.getElementById('messagesContainer');
+    const el = document.createElement('div');
+    el.className = `message ${type}`;
+    el.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+    return el;
+}
+
+function addThinking() {
+    const container = document.getElementById('messagesContainer');
+    const el = document.createElement('div');
+    el.className = 'message thinking';
+    el.innerHTML = `<div class="message-content"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+    return el;
+}
+
+function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function saveTasks() {
+    localStorage.setItem('shaz_tasks',  JSON.stringify(state.tasks));
+    localStorage.setItem('shaz_nextId', state.nextId.toString());
+}
+
+function updateUI() {
+    const sidebar  = document.getElementById('tasksSidebar');
+    const stats    = document.getElementById('sidebarStats');
+    const count    = document.getElementById('taskCount');
+
+    count.textContent = state.tasks.length + ' task' + (state.tasks.length !== 1 ? 's' : '');
+
+    // Stats chips
+    const done    = state.tasks.filter(t => t.status === 'Done').length;
+    const prog    = state.tasks.filter(t => t.status === 'In Progress').length;
+    const blocked = state.tasks.filter(t => t.status === 'Blocked').length;
+    const todo    = state.tasks.filter(t => t.status === 'To Do').length;
+
+    stats.innerHTML = `
+        <div class="stat-chip done"><span class="stat-num">${done}</span><span class="stat-lbl">Done</span></div>
+        <div class="stat-chip progress"><span class="stat-num">${prog}</span><span class="stat-lbl">Active</span></div>
+        <div class="stat-chip blocked"><span class="stat-num">${blocked}</span><span class="stat-lbl">Blocked</span></div>
+        <div class="stat-chip todo"><span class="stat-num">${todo}</span><span class="stat-lbl">To Do</span></div>
+    `;
+
+    // Group by category
+    const cats = {};
+    state.tasks.forEach(t => {
+        if (!cats[t.category]) cats[t.category] = [];
+        cats[t.category].push(t);
+    });
+
+    sidebar.innerHTML = '';
+    for (const [cat, tasks] of Object.entries(cats)) {
+        const catEl = document.createElement('div');
+        catEl.className = 'category-title';
+        catEl.textContent = cat;
+        sidebar.appendChild(catEl);
+
+        tasks.forEach(task => {
+            const statusKey = task.status.toLowerCase().replace(' ', '-');
+            const badgeMap  = { 'done': 'badge-done', 'in-progress': 'badge-in-progress', 'blocked': 'badge-blocked', 'to-do': 'badge-to-do' };
+            const fillColor = { 'done': '#10b981', 'in-progress': '#3b82f6', 'blocked': '#ef4444', 'to-do': '#d1d5db' };
+
+            const el = document.createElement('div');
+            el.className = 'task-item';
+            el.innerHTML = `
+                <div class="task-header">
+                    <div class="task-name ${task.status === 'Done' ? 'done' : ''}" title="${task.name}">${task.name}</div>
+                    <div class="status-badge ${badgeMap[statusKey] || 'badge-to-do'}">${task.status}</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:${task.percent}%;background:${fillColor[statusKey]||'#d1d5db'}"></div>
+                </div>
+                <div class="task-percent">${task.percent}%</div>
+            `;
+            sidebar.appendChild(el);
         });
+    }
+}
 
-        updateUI();
-    </script>
+/* ═══════════════════════════════════════════════
+   VOICE INPUT
+═══════════════════════════════════════════════ */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function startVoiceInput() {
+    if (!SpeechRecognition) { alert('Speech recognition not supported in this browser.'); return; }
+    const recognition = new SpeechRecognition();
+    const btn = document.getElementById('voiceBtn');
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.start();
+    btn.classList.add('active');
+
+    recognition.onresult = (e) => {
+        let transcript = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            transcript += e.results[i][0].transcript;
+        }
+        document.getElementById('inputField').value = transcript;
+        btn.classList.remove('active');
+        sendMessage();
+    };
+    recognition.onerror = recognition.onend = () => btn.classList.remove('active');
+}
+
+/* ═══════════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════════ */
+function clearAll() {
+    if (!confirm('Clear all tasks and chat history?')) return;
+    localStorage.removeItem('shaz_tasks');
+    localStorage.removeItem('shaz_nextId');
+    location.reload();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('inputField').addEventListener('keypress', e => {
+        if (e.key === 'Enter') sendMessage();
+    });
+});
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════════════
+  GOOGLE APPS SCRIPT CODE
+  Copy this into Extensions → Apps Script in your Google Sheet
+═══════════════════════════════════════════════════════════════════════
+
+const SHEET_NAME = 'Tasks';
+
+function doGet(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (!sheet) return jsonResponse({ error: 'Sheet not found' });
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return jsonResponse({ tasks: [] });
+  const headers = data[0].map(h => h.toString().toLowerCase().trim());
+  const tasks = data.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
+  }).filter(t => t.id !== '' && t.id !== undefined);
+  return jsonResponse({ tasks });
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (body.action === 'sync') {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      if (!sheet) return jsonResponse({ error: 'Sheet not found' });
+      sheet.clearContents();
+      const headers = ['id', 'name', 'category', 'status', 'percent'];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      if (body.tasks && body.tasks.length > 0) {
+        const rows = body.tasks.map(t => [t.id, t.name, t.category, t.status, t.percent]);
+        sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+      }
+    }
+    return jsonResponse({ success: true });
+  } catch(err) {
+    return jsonResponse({ error: err.message });
+  }
+}
+
+function jsonResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+═══════════════════════════════════════════════════════════════════════
+-->
 </body>
 </html>
